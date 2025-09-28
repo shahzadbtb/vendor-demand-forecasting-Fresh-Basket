@@ -61,31 +61,25 @@ div[data-testid="stDataEditor"] td {
   padding: 3px !important;
 }
 
-/* === Product Data Table (editor) === */
+/* Product Data table (st.data_editor) */
 div[data-testid="stDataEditor"] th:nth-child(1),
-div[data-testid="stDataEditor"] td:nth-child(1) { width: 40% !important; }  /* Product */
-div[data-testid="stDataEditor"] th:nth-child(2),
-div[data-testid="stDataEditor"] td:nth-child(2) { width: 5% !important; }  /* 1 Day */
-div[data-testid="stDataEditor"] th:nth-child(3),
-div[data-testid="stDataEditor"] td:nth-child(3) { width: 5% !important; }  /* 2 Days */
-div[data-testid="stDataEditor"] th:nth-child(4),
-div[data-testid="stDataEditor"] td:nth-child(4) { width: 5% !important; }  /* 5 Days */
-div[data-testid="stDataEditor"] th:nth-child(5),
-div[data-testid="stDataEditor"] td:nth-child(5) { width: 5% !important; }  /* On Hand */
+div[data-testid="stDataEditor"] td:nth-child(1) {
+  width: 50% !important;   /* Product column wider */
+}
+div[data-testid="stDataEditor"] th:nth-child(n+2),
+div[data-testid="stDataEditor"] td:nth-child(n+2) {
+  width: 12% !important;   /* Day 1, Day 2, Day 3, On Hand smaller */
+}
 
-/* === Projection Table (dataframe) === */
+/* Projection table (st.dataframe) */
 div[data-testid="stDataFrame"] th:nth-child(1),
-div[data-testid="stDataFrame"] td:nth-child(1) { width: 40% !important; }  /* Product */
-div[data-testid="stDataFrame"] th:nth-child(2),
-div[data-testid="stDataFrame"] td:nth-child(2) { width: 5% !important; }  /* 1 Day */
-div[data-testid="stDataFrame"] th:nth-child(3),
-div[data-testid="stDataFrame"] td:nth-child(3) { width: 5% !important; }  /* 2 Days */
-div[data-testid="stDataFrame"] th:nth-child(4),
-div[data-testid="stDataFrame"] td:nth-child(4) { width: 5% !important; }  /* 5 Days */
-div[data-testid="stDataFrame"] th:nth-child(5),
-div[data-testid="stDataFrame"] td:nth-child(5) { width: 5% !important; }  /* On Hand */
-div[data-testid="stDataFrame"] th:nth-child(6),
-div[data-testid="stDataFrame"] td:nth-child(6) { width: 5% !important; }  /* Projection */
+div[data-testid="stDataFrame"] td:nth-child(1) {
+  width: 30% !important;   /* Product smaller than data editor */
+}
+div[data-testid="stDataFrame"] th:nth-child(n+2),
+div[data-testid="stDataFrame"] td:nth-child(n+2) {
+  width: 14% !important;
+}
 
 /* Invoice textarea */
 textarea {
@@ -246,11 +240,11 @@ if ss.vendor_data:
         hide_index=True,
         height=table_height(len(df)),
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="small"),
-            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
-            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
-            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
-            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="small"),
+            "Product": st.column_config.Column(disabled=True, width="medium"),  # wider
+            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
+            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
+            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
+            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="x-small"),
         }
     )
 
