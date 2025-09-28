@@ -61,17 +61,31 @@ div[data-testid="stDataEditor"] td {
   padding: 3px !important;
 }
 
-/* Product Data table: Product = 40%, rest 15% */
-div.product-table th:nth-child(1),
-div.product-table td:nth-child(1) { width: 40% !important; }
-div.product-table th:nth-child(n+2),
-div.product-table td:nth-child(n+2) { width: 5% !important; }
+/* === Product Data Table (editor) === */
+div[data-testid="stDataEditor"] th:nth-child(1),
+div[data-testid="stDataEditor"] td:nth-child(1) { width: 45% !important; }  /* Product */
+div[data-testid="stDataEditor"] th:nth-child(2),
+div[data-testid="stDataEditor"] td:nth-child(2) { width: 12% !important; }  /* 1 Day */
+div[data-testid="stDataEditor"] th:nth-child(3),
+div[data-testid="stDataEditor"] td:nth-child(3) { width: 12% !important; }  /* 2 Days */
+div[data-testid="stDataEditor"] th:nth-child(4),
+div[data-testid="stDataEditor"] td:nth-child(4) { width: 12% !important; }  /* 5 Days */
+div[data-testid="stDataEditor"] th:nth-child(5),
+div[data-testid="stDataEditor"] td:nth-child(5) { width: 19% !important; }  /* On Hand */
 
-/* Projection table: Product = 30%, others auto */
-div.projection-table th:nth-child(1),
-div.projection-table td:nth-child(1) { width: 10% !important; }
-div.projection-table th:nth-child(n+2),
-div.projection-table td:nth-child(n+2) { width: 5% !important; }
+/* === Projection Table (dataframe) === */
+div[data-testid="stDataFrame"] th:nth-child(1),
+div[data-testid="stDataFrame"] td:nth-child(1) { width: 40% !important; }  /* Product */
+div[data-testid="stDataFrame"] th:nth-child(2),
+div[data-testid="stDataFrame"] td:nth-child(2) { width: 10% !important; }  /* 1 Day */
+div[data-testid="stDataFrame"] th:nth-child(3),
+div[data-testid="stDataFrame"] td:nth-child(3) { width: 10% !important; }  /* 2 Days */
+div[data-testid="stDataFrame"] th:nth-child(4),
+div[data-testid="stDataFrame"] td:nth-child(4) { width: 10% !important; }  /* 5 Days */
+div[data-testid="stDataFrame"] th:nth-child(5),
+div[data-testid="stDataFrame"] td:nth-child(5) { width: 10% !important; }  /* On Hand */
+div[data-testid="stDataFrame"] th:nth-child(6),
+div[data-testid="stDataFrame"] td:nth-child(6) { width: 20% !important; }  /* Projection */
 
 /* Invoice textarea */
 textarea {
