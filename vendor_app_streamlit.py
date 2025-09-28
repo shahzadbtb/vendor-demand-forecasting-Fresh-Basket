@@ -63,29 +63,29 @@ div[data-testid="stDataEditor"] td {
 
 /* === Product Data Table (editor) === */
 div[data-testid="stDataEditor"] th:nth-child(1),
-div[data-testid="stDataEditor"] td:nth-child(1) { width: 45% !important; }  /* Product */
+div[data-testid="stDataEditor"] td:nth-child(1) { width: 50% !important; }  /* Product */
 div[data-testid="stDataEditor"] th:nth-child(2),
-div[data-testid="stDataEditor"] td:nth-child(2) { width: 12% !important; }  /* 1 Day */
+div[data-testid="stDataEditor"] td:nth-child(2) { width: 5% !important; }  /* 1 Day */
 div[data-testid="stDataEditor"] th:nth-child(3),
-div[data-testid="stDataEditor"] td:nth-child(3) { width: 12% !important; }  /* 2 Days */
+div[data-testid="stDataEditor"] td:nth-child(3) { width: 5% !important; }  /* 2 Days */
 div[data-testid="stDataEditor"] th:nth-child(4),
-div[data-testid="stDataEditor"] td:nth-child(4) { width: 12% !important; }  /* 5 Days */
+div[data-testid="stDataEditor"] td:nth-child(4) { width: 5% !important; }  /* 5 Days */
 div[data-testid="stDataEditor"] th:nth-child(5),
-div[data-testid="stDataEditor"] td:nth-child(5) { width: 19% !important; }  /* On Hand */
+div[data-testid="stDataEditor"] td:nth-child(5) { width: 10% !important; }  /* On Hand */
 
 /* === Projection Table (dataframe) === */
 div[data-testid="stDataFrame"] th:nth-child(1),
-div[data-testid="stDataFrame"] td:nth-child(1) { width: 40% !important; }  /* Product */
+div[data-testid="stDataFrame"] td:nth-child(1) { width: 20% !important; }  /* Product */
 div[data-testid="stDataFrame"] th:nth-child(2),
-div[data-testid="stDataFrame"] td:nth-child(2) { width: 10% !important; }  /* 1 Day */
+div[data-testid="stDataFrame"] td:nth-child(2) { width: 5% !important; }  /* 1 Day */
 div[data-testid="stDataFrame"] th:nth-child(3),
-div[data-testid="stDataFrame"] td:nth-child(3) { width: 10% !important; }  /* 2 Days */
+div[data-testid="stDataFrame"] td:nth-child(3) { width: 5% !important; }  /* 2 Days */
 div[data-testid="stDataFrame"] th:nth-child(4),
-div[data-testid="stDataFrame"] td:nth-child(4) { width: 10% !important; }  /* 5 Days */
+div[data-testid="stDataFrame"] td:nth-child(4) { width: 5% !important; }  /* 5 Days */
 div[data-testid="stDataFrame"] th:nth-child(5),
-div[data-testid="stDataFrame"] td:nth-child(5) { width: 10% !important; }  /* On Hand */
+div[data-testid="stDataFrame"] td:nth-child(5) { width: 5% !important; }  /* On Hand */
 div[data-testid="stDataFrame"] th:nth-child(6),
-div[data-testid="stDataFrame"] td:nth-child(6) { width: 20% !important; }  /* Projection */
+div[data-testid="stDataFrame"] td:nth-child(6) { width: 5% !important; }  /* Projection */
 
 /* Invoice textarea */
 textarea {
