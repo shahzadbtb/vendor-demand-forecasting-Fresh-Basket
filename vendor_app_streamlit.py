@@ -64,17 +64,29 @@ div[data-testid="stDataEditor"] td {
 /* Product Data table (st.data_editor) */
 div[data-testid="stDataEditor"] th:nth-child(1),
 div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 50% !important;   /* Product column wider */
+  width: 50% !important;   /* Product column wide */
 }
-div[data-testid="stDataEditor"] th:nth-child(n+2),
-div[data-testid="stDataEditor"] td:nth-child(n+2) {
-  width: 12% !important;   /* Day 1, Day 2, Day 3, On Hand smaller */
+div[data-testid="stDataEditor"] th:nth-child(2),
+div[data-testid="stDataEditor"] td:nth-child(2) {
+  width: 10% !important;   /* Day 1 */
+}
+div[data-testid="stDataEditor"] th:nth-child(3),
+div[data-testid="stDataEditor"] td:nth-child(3) {
+  width: 10% !important;   /* Day 2 */
+}
+div[data-testid="stDataEditor"] th:nth-child(4),
+div[data-testid="stDataEditor"] td:nth-child(4) {
+  width: 10% !important;   /* Day 3 */
+}
+div[data-testid="stDataEditor"] th:nth-child(5),
+div[data-testid="stDataEditor"] td:nth-child(5) {
+  width: 8% !important;    /* On Hand smaller, stays right */
 }
 
 /* Projection table (st.dataframe) */
 div[data-testid="stDataFrame"] th:nth-child(1),
 div[data-testid="stDataFrame"] td:nth-child(1) {
-  width: 30% !important;   /* Product smaller than data editor */
+  width: 30% !important;
 }
 div[data-testid="stDataFrame"] th:nth-child(n+2),
 div[data-testid="stDataFrame"] td:nth-child(n+2) {
@@ -240,11 +252,11 @@ if ss.vendor_data:
         hide_index=True,
         height=table_height(len(df)),
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="medium"),  # wider
+            "Product": st.column_config.Column(disabled=True, width="medium"),
             "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
             "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
             "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
-            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="x-small"),
+            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="xx-small"),  # smaller & rightmost
         }
     )
 
