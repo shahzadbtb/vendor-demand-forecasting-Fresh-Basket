@@ -24,6 +24,8 @@ ss.setdefault("projection", None)
 ss.setdefault("proj_df", None)
 ss.setdefault("show_upload", False)
 
+DEFAULT_FILE = "vendor_data.xlsx"  # 🔹 Put your Excel file here in same folder
+
 # ------------------------------
 # HELPERS
 # ------------------------------
@@ -100,24 +102,27 @@ def copy_button(label: str, text_to_copy: str, key: str):
 # ------------------------------
 col1, col2 = st.columns([1, 6])
 with col1:
-    if os.path.exists("fresh basket logo.jfif"):
-        st.image("fresh basket logo.jfif", width=80)
+    st.image("fresh_basket_logo.png", width=80)  # 🔹 Place your logo file here
 with col2:
     st.title("Vendors Demand Forecasting")
 st.caption("Powered by Fresh Basket • Mobile Friendly • Fast & Dynamic")
 
 # ------------------------------
-# LOAD UPLOAD SECTION
+# LOAD DEFAULT / UPLOAD
 # ------------------------------
 if not ss.vendor_data:
-    uploaded = st.file_uploader("📑 Upload Excel File", type=["xlsx", "xls"], key="first_upload")
-    if uploaded:
-        ss.vendor_data = parse_excel(uploaded)
-        if ss.vendor_data:
-            st.success(f"✅ Loaded {len(ss.vendor_data)} vendors")
-            ss.show_upload = False
-        else:
-            st.error("No valid rows found. Please check your Excel file.")
+    if os.path.exists(DEFAULT_FILE):
+        ss.vendor_data = parse_excel(DEFAULT_FILE)
+        st.success(f"✅ Loaded default file: {DEFAULT_FILE} with {len(ss.vendor_data)} vendors")
+    else:
+        uploaded = st.file_uploader("📑 Upload Excel File", type=["xlsx", "xls"], key="first_upload")
+        if uploaded:
+            ss.vendor_data = parse_excel(uploaded)
+            if ss.vendor_data:
+                st.success(f"✅ Loaded {len(ss.vendor_data)} vendors")
+                ss.show_upload = False
+            else:
+                st.error("No valid rows found. Please check your Excel file.")
 else:
     cols = st.columns([1, 1])
     with cols[0]:
@@ -152,39 +157,19 @@ if ss.vendor_data:
 
     # Base DataFrame
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
-    df["On Hand"] = 0
-
-    # Remove blank rows
-    df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
-
-    # Custom CSS for styling + responsiveness
-    st.markdown("""
-        <style>
-        table {
-            font-size: 20px !important;
-            text-align: center !important;
-        }
-        th, td {
-            text-align: center !important;
-            vertical-align: middle !important;
-        }
-        .stDataFrame, .stDataEditor {
-            overflow-x: auto;
-        }
-        </style>
-    """, unsafe_allow_html=True)
+    df["On Hand"] = 0  # editable
 
     st.markdown("### 📋 Product Data (enter On Hand only)")
     edited = st.data_editor(
         df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
-            "Product": st.column_config.Column(disabled=True),
-            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True),
-            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True),
-            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True),
-            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1),
+            "Product": st.column_config.Column(disabled=True, width="small"),
+            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, help="Enter On Hand qty"),
         }
     )
 
@@ -212,16 +197,18 @@ if ss.vendor_data:
         tmp[header] = tmp.apply(lambda r: max(0, int(r[base_col]) - int(r["On Hand"])), axis=1)
         ss.proj_df = tmp
 
+        # Must require at least one On Hand entry
         if not any(tmp["On Hand"] > 0):
             st.warning("⚠️ Please enter On Hand for at least one product before saving.")
         else:
             st.success(f"✅ Showing {header}")
             show = tmp[["Product", "1 Day", "2 Days", "5 Days", "On Hand", header]].copy()
-            show = show[show["Product"].notna() & (show["Product"].str.strip() != "")]
             for col in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
                 show[col] = show[col].astype(int)
 
-            st.dataframe(show, use_container_width=True)
+            styled = show.style.set_properties(**{'text-align': 'center', 'font-size': '16px'}) \
+                               .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center'), ('font-size', '16px')]}])
+            st.dataframe(styled, width="stretch")
 
             st.markdown("### 🧾 Invoice")
             cols = st.columns(2)
@@ -236,8 +223,7 @@ if ss.vendor_data:
                     items = use.values.tolist()
                     invoice_text = build_invoice_text(vendor, branch, items)
 
-                    # Auto-size textarea (no scrollbar)
-                    st.text_area("Invoice Preview", invoice_text, height=500)
+                    st.text_area("Invoice Preview", invoice_text, height=280)
 
                     quoted = urllib.parse.quote(invoice_text)
                     wa_url = f"https://wa.me/?text={quoted}"
