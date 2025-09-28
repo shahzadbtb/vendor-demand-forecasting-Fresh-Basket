@@ -102,7 +102,8 @@ def copy_button(label: str, text_to_copy: str, key: str):
 # ------------------------------
 col1, col2 = st.columns([1, 6])
 with col1:
-    st.image("fresh_basket_logo.png", width=80)  # 🔹 Place your logo file here
+    st.image("fresh basket logo.jfif", width=120)
+  # 🔹 Place your logo file here
 with col2:
     st.title("Vendors Demand Forecasting")
 st.caption("Powered by Fresh Basket • Mobile Friendly • Fast & Dynamic")
