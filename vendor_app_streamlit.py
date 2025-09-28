@@ -29,20 +29,20 @@ ss.setdefault("show_upload", False)
 # ------------------------------
 st.markdown("""
 <style>
-/* Reduce container width */
+/* Container adjustments */
 .block-container {
-  max-width: 820px;
+  max-width: 800px;
   padding-top: 0.5rem;
 }
 @media (max-width: 768px) {
   .block-container {
     max-width: 100%;
-    padding-left: 0.3rem;
-    padding-right: 0.3rem;
+    padding-left: 0.2rem;
+    padding-right: 0.2rem;
   }
 }
 
-/* Force smaller table columns */
+/* Force tighter table layout */
 div[data-testid="stDataFrame"] table,
 div[data-testid="stDataEditor"] table {
   table-layout: fixed !important;
@@ -55,35 +55,36 @@ div[data-testid="stDataEditor"] th,
 div[data-testid="stDataEditor"] td {
   text-align: center !important;
   vertical-align: middle !important;
-  font-size: 15px !important;   /* smaller text for mobile */
-  white-space: normal !important;  /* wrap text */
+  font-size: 14px !important;  /* compact text for mobile */
+  white-space: normal !important;
   word-break: break-word !important;
-  padding: 4px !important;
+  padding: 3px !important;
 }
 
-/* Product column wider, qty columns narrower */
+/* Product column = 35% */
 div[data-testid="stDataFrame"] th:nth-child(1),
 div[data-testid="stDataFrame"] td:nth-child(1),
 div[data-testid="stDataEditor"] th:nth-child(1),
 div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 45% !important;
+  width: 35% !important;
 }
-div[data-testid="stDataFrame"] th:not(:first-child),
-div[data-testid="stDataFrame"] td:not(:first-child),
-div[data-testid="stDataEditor"] th:not(:first-child),
-div[data-testid="stDataEditor"] td:not(:first-child) {
-  width: 13% !important;  /* evenly fit Day1, Day2, Day5, On Hand */
+
+/* Remaining columns split equally */
+div[data-testid="stDataFrame"] th:nth-child(n+2),
+div[data-testid="stDataFrame"] td:nth-child(n+2),
+div[data-testid="stDataEditor"] th:nth-child(n+2),
+div[data-testid="stDataEditor"] td:nth-child(n+2) {
+  width: 16% !important;
 }
 
 /* Invoice textarea */
 textarea {
   width: 100% !important;
-  height: auto !important;
-  min-height: 500px !important;
-  font-size: 16px !important;
+  min-height: 480px !important;
+  font-size: 15px !important;
 }
 
-/* Mobile buttons full width */
+/* Buttons full width on mobile */
 @media (max-width: 768px) {
   .stButton>button {
     width: 100% !important;
@@ -98,14 +99,15 @@ textarea {
 # HELPERS
 # ------------------------------
 def parse_excel(uploaded_file) -> dict:
+    """Return {sheet_name: [[Product, 1d, 2d, 5d], ...]}, skipping blank rows."""
     excel_file = pd.ExcelFile(uploaded_file)
     data = {}
     for sheet in excel_file.sheet_names:
-        raw = pd.read_excel(excel_file, sheet_name=sheet, header=None).iloc[:, :4]
+        raw = pd.read_excel(uploaded_file, sheet_name=sheet, header=None).iloc[:, :4]
         rows = []
         for _, r in raw.iterrows():
             name = "" if pd.isna(r.iloc[0]) else str(r.iloc[0]).strip()
-            if not name:
+            if not name:  # skip blanks
                 continue
             def num(x):
                 try:
@@ -141,7 +143,7 @@ def copy_button(label: str, text_to_copy: str, key: str):
     <div>
       <button id="btn-{key}" style="
         background:#6c5ce7;color:white;border:none;border-radius:8px;
-        padding:10px 14px;cursor:pointer;font-weight:700;">{label}</button>
+        padding:12px 18px;cursor:pointer;font-weight:700;">{label}</button>
       <textarea id="txt-{key}" style="position:absolute;left:-9999px;top:-9999px;">{safe}</textarea>
     </div>
     <script>
@@ -156,12 +158,12 @@ def copy_button(label: str, text_to_copy: str, key: str):
       }};
     </script>
     """
-    components.html(html, height=50)
+    components.html(html, height=60)
 
 def table_height(n_rows: int) -> int:
-    row_h = 38
-    header_h = 50
-    return min(2000, header_h + n_rows * row_h)
+    row_h = 42
+    header_h = 52
+    return min(1600, header_h + n_rows * row_h)
 
 # ------------------------------
 # HEADER
@@ -228,6 +230,7 @@ if ss.vendor_data:
     ss.current_vendor = vendor
     rows = ss.vendor_data[vendor]
 
+    # Filtered DataFrame: no blank rows
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
     df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
     df["On Hand"] = 0
@@ -239,7 +242,7 @@ if ss.vendor_data:
         hide_index=True,
         height=table_height(len(df)),
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="medium"),
+            "Product": st.column_config.Column(disabled=True, width="small"),
             "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
             "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
             "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
@@ -290,7 +293,7 @@ if ss.vendor_data:
                     invoice_text = build_invoice_text(vendor, branch, items)
 
                     n_lines = invoice_text.count("\n") + 1
-                    ta_height = min(1600, max(500, 28 * n_lines + 80))
+                    ta_height = min(1600, max(520, 28 * n_lines + 80))
                     st.text_area("Invoice Preview", invoice_text, height=ta_height, key="invoice_edit")
 
                     quoted = urllib.parse.quote(invoice_text)
