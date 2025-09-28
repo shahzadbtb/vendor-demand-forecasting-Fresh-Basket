@@ -213,6 +213,13 @@ if ss.vendor_data:
         use_container_width=True,
         hide_index=True,
         height=table_height(len(df)),
+        column_config={
+            "Product": st.column_config.Column(disabled=True, width="flex"),
+            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
+            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
+            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
+            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width=60),
+        }
     )
 
     st.divider()
@@ -244,7 +251,20 @@ if ss.vendor_data:
             for c in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
                 show[c] = show[c].astype(int)
 
-            st.dataframe(show, use_container_width=True, height=table_height(len(show)), hide_index=True)
+            st.dataframe(
+                show,
+                use_container_width=True,
+                height=table_height(len(show)),
+                hide_index=True,
+                column_config={
+                    "Product": st.column_config.Column(disabled=True, width="flex"),
+                    "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
+                    "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
+                    "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
+                    "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width=60),
+                    header: st.column_config.NumberColumn(format="%d", disabled=True, width=70),
+                }
+            )
 
             st.markdown("### 🧾 Invoice")
             if st.button("💾 Save & Show Invoice"):
