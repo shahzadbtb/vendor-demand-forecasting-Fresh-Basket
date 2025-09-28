@@ -29,68 +29,35 @@ ss.setdefault("show_upload", False)
 # ------------------------------
 st.markdown("""
 <style>
-/* Container adjustments */
-.block-container {
-  max-width: 800px;
-  padding-top: 0.5rem;
-}
-@media (max-width: 768px) {
-  .block-container {
-    max-width: 100%;
-    padding-left: 0.2rem;
-    padding-right: 0.2rem;
-  }
-}
+/* Limit screen width */
+.block-container {max-width: 860px; padding-top: 1rem;}
+@media (max-width: 768px) {.block-container {max-width: 100%; padding-left: 0.5rem; padding-right: 0.5rem;}}
 
-/* Force tighter table layout */
+/* Center + wrap text */
 div[data-testid="stDataFrame"] table,
-div[data-testid="stDataEditor"] table {
-  table-layout: fixed !important;
-  width: 100% !important;
-}
-
-div[data-testid="stDataFrame"] th,
-div[data-testid="stDataFrame"] td,
-div[data-testid="stDataEditor"] th,
-div[data-testid="stDataEditor"] td {
+div[data-testid="stDataEditor"] table,
+div[data-testid="stDataFrame"] th, div[data-testid="stDataFrame"] td,
+div[data-testid="stDataEditor"] th, div[data-testid="stDataEditor"] td {
   text-align: center !important;
   vertical-align: middle !important;
-  font-size: 14px !important;  /* compact text for mobile */
+  font-size: 16px !important;
   white-space: normal !important;
-  word-break: break-word !important;
-  padding: 3px !important;
+  word-wrap: break-word !important;
 }
 
-/* Product column = 35% */
-div[data-testid="stDataFrame"] th:nth-child(1),
-div[data-testid="stDataFrame"] td:nth-child(1),
-div[data-testid="stDataEditor"] th:nth-child(1),
-div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 35% !important;
-}
-
-/* Remaining columns split equally */
-div[data-testid="stDataFrame"] th:nth-child(n+2),
-div[data-testid="stDataFrame"] td:nth-child(n+2),
-div[data-testid="stDataEditor"] th:nth-child(n+2),
-div[data-testid="stDataEditor"] td:nth-child(n+2) {
-  width: 16% !important;
-}
-
-/* Invoice textarea */
+/* Invoice styling */
 textarea {
   width: 100% !important;
-  min-height: 480px !important;
-  font-size: 15px !important;
+  height: auto !important;
+  min-height: 560px !important;
+  font-size: 22px !important;   /* bigger font */
+  line-height: 1.5 !important;
+  padding: 12px !important;
 }
 
-/* Buttons full width on mobile */
+/* Buttons on mobile */
 @media (max-width: 768px) {
-  .stButton>button {
-    width: 100% !important;
-    padding: 12px !important;
-    font-size: 16px !important;
-  }
+  .stButton>button { width:100% !important; padding:14px !important; font-size:18px !important; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -107,7 +74,7 @@ def parse_excel(uploaded_file) -> dict:
         rows = []
         for _, r in raw.iterrows():
             name = "" if pd.isna(r.iloc[0]) else str(r.iloc[0]).strip()
-            if not name:  # skip blanks
+            if not name:
                 continue
             def num(x):
                 try:
@@ -161,9 +128,9 @@ def copy_button(label: str, text_to_copy: str, key: str):
     components.html(html, height=60)
 
 def table_height(n_rows: int) -> int:
-    row_h = 42
-    header_h = 52
-    return min(1600, header_h + n_rows * row_h)
+    row_h = 44
+    header_h = 64
+    return min(2000, header_h + n_rows * row_h)
 
 # ------------------------------
 # HEADER
@@ -173,7 +140,7 @@ with col1:
     logo_candidates = ["fresh_basket_logo.png", "fresh basket logo.jfif"]
     logo_path = next((p for p in logo_candidates if os.path.exists(p)), None)
     if logo_path:
-        st.image(logo_path, width=140)
+        st.image(logo_path, width=150)
 with col2:
     st.title("Vendors Demand Forecasting")
 st.caption("Powered by Fresh Basket • Mobile Friendly • Fast & Dynamic")
@@ -242,7 +209,7 @@ if ss.vendor_data:
         hide_index=True,
         height=table_height(len(df)),
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="small"),
+            "Product": st.column_config.Column(disabled=True, width="large"),   # bigger
             "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
             "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
             "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
@@ -280,7 +247,20 @@ if ss.vendor_data:
             for c in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
                 show[c] = show[c].astype(int)
 
-            st.dataframe(show, use_container_width=True, height=table_height(len(show)), hide_index=True)
+            st.dataframe(
+                show,
+                use_container_width=True,
+                height=table_height(len(show)),
+                hide_index=True,
+                column_config={
+                    "Product": st.column_config.Column(disabled=True, width="medium"),  # shrink in projection
+                    "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+                    "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+                    "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+                    "On Hand": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+                    header: st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+                }
+            )
 
             st.markdown("### 🧾 Invoice")
             if st.button("💾 Save & Show Invoice"):
