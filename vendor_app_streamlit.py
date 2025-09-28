@@ -29,37 +29,67 @@ ss.setdefault("show_upload", False)
 # ------------------------------
 st.markdown("""
 <style>
-/* Reduce overall width more (~1 inch smaller) */
-.block-container {max-width: 760px; padding-top: 0.8rem;}
+/* Reduce container width */
+.block-container {
+  max-width: 820px;
+  padding-top: 0.5rem;
+}
 @media (max-width: 768px) {
-  .block-container {max-width: 100%; padding-left: 0.5rem; padding-right: 0.5rem;}
+  .block-container {
+    max-width: 100%;
+    padding-left: 0.3rem;
+    padding-right: 0.3rem;
+  }
 }
 
-/* Center + resize table text */
+/* Force smaller table columns */
 div[data-testid="stDataFrame"] table,
-div[data-testid="stDataEditor"] table,
-div[data-testid="stDataFrame"] th, div[data-testid="stDataFrame"] td,
-div[data-testid="stDataEditor"] th, div[data-testid="stDataEditor"] td {
+div[data-testid="stDataEditor"] table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+div[data-testid="stDataFrame"] th,
+div[data-testid="stDataFrame"] td,
+div[data-testid="stDataEditor"] th,
+div[data-testid="stDataEditor"] td {
   text-align: center !important;
   vertical-align: middle !important;
-  font-size: 16px !important;
-  white-space: normal !important;   /* wrap product names */
+  font-size: 15px !important;   /* smaller text for mobile */
+  white-space: normal !important;  /* wrap text */
+  word-break: break-word !important;
+  padding: 4px !important;
 }
 
-/* Keep grids full width */
-div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] { width: 100% !important; }
+/* Product column wider, qty columns narrower */
+div[data-testid="stDataFrame"] th:nth-child(1),
+div[data-testid="stDataFrame"] td:nth-child(1),
+div[data-testid="stDataEditor"] th:nth-child(1),
+div[data-testid="stDataEditor"] td:nth-child(1) {
+  width: 45% !important;
+}
+div[data-testid="stDataFrame"] th:not(:first-child),
+div[data-testid="stDataFrame"] td:not(:first-child),
+div[data-testid="stDataEditor"] th:not(:first-child),
+div[data-testid="stDataEditor"] td:not(:first-child) {
+  width: 13% !important;  /* evenly fit Day1, Day2, Day5, On Hand */
+}
 
 /* Invoice textarea */
 textarea {
   width: 100% !important;
   height: auto !important;
-  min-height: 520px !important;
+  min-height: 500px !important;
   font-size: 16px !important;
 }
 
-/* Bigger buttons on phones */
+/* Mobile buttons full width */
 @media (max-width: 768px) {
-  .stButton>button { width:100% !important; padding:14px !important; font-size:17px !important; }
+  .stButton>button {
+    width: 100% !important;
+    padding: 12px !important;
+    font-size: 16px !important;
+  }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -68,7 +98,6 @@ textarea {
 # HELPERS
 # ------------------------------
 def parse_excel(uploaded_file) -> dict:
-    """Return {sheet_name: [[Product, 1d, 2d, 5d], ...]}, skipping blank/zero rows."""
     excel_file = pd.ExcelFile(uploaded_file)
     data = {}
     for sheet in excel_file.sheet_names:
@@ -83,11 +112,7 @@ def parse_excel(uploaded_file) -> dict:
                     return int(float(x))
                 except Exception:
                     return 0
-            nums = [num(r.iloc[1]), num(r.iloc[2]), num(r.iloc[3])]
-            # ✅ Skip if all numeric values are zero
-            if not any(nums):
-                continue
-            rows.append([name] + nums)
+            rows.append([name, num(r.iloc[1]), num(r.iloc[2]), num(r.iloc[3])])
         if rows:
             data[sheet] = rows
     return data
@@ -116,7 +141,7 @@ def copy_button(label: str, text_to_copy: str, key: str):
     <div>
       <button id="btn-{key}" style="
         background:#6c5ce7;color:white;border:none;border-radius:8px;
-        padding:12px 18px;cursor:pointer;font-weight:700;">{label}</button>
+        padding:10px 14px;cursor:pointer;font-weight:700;">{label}</button>
       <textarea id="txt-{key}" style="position:absolute;left:-9999px;top:-9999px;">{safe}</textarea>
     </div>
     <script>
@@ -131,12 +156,12 @@ def copy_button(label: str, text_to_copy: str, key: str):
       }};
     </script>
     """
-    components.html(html, height=60)
+    components.html(html, height=50)
 
 def table_height(n_rows: int) -> int:
-    row_h = 40
+    row_h = 38
     header_h = 50
-    return min(1600, header_h + n_rows * row_h)
+    return min(2000, header_h + n_rows * row_h)
 
 # ------------------------------
 # HEADER
@@ -203,8 +228,8 @@ if ss.vendor_data:
     ss.current_vendor = vendor
     rows = ss.vendor_data[vendor]
 
-    # ✅ Already cleaned in parse_excel
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
+    df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
     df["On Hand"] = 0
 
     st.markdown("### 📋 Product Data (enter On Hand only)")
@@ -214,11 +239,11 @@ if ss.vendor_data:
         hide_index=True,
         height=table_height(len(df)),
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="flex"),
-            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
-            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
-            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
-            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width=60),
+            "Product": st.column_config.Column(disabled=True, width="medium"),
+            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
+            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="small"),
         }
     )
 
@@ -248,23 +273,11 @@ if ss.vendor_data:
         else:
             st.success(f"✅ Showing {header}")
             show = tmp[["Product", "1 Day", "2 Days", "5 Days", "On Hand", header]].copy()
+            show = show[show["Product"].notna() & (show["Product"].str.strip() != "")]
             for c in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
                 show[c] = show[c].astype(int)
 
-            st.dataframe(
-                show,
-                use_container_width=True,
-                height=table_height(len(show)),
-                hide_index=True,
-                column_config={
-                    "Product": st.column_config.Column(disabled=True, width="flex"),
-                    "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
-                    "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
-                    "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width=60),
-                    "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width=60),
-                    header: st.column_config.NumberColumn(format="%d", disabled=True, width=70),
-                }
-            )
+            st.dataframe(show, use_container_width=True, height=table_height(len(show)), hide_index=True)
 
             st.markdown("### 🧾 Invoice")
             if st.button("💾 Save & Show Invoice"):
