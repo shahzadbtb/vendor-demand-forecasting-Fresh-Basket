@@ -1,9 +1,9 @@
-import streamlit as st
-import pandas as pd
+import os
 import datetime
 import urllib.parse
+import pandas as pd
+import streamlit as st
 import streamlit.components.v1 as components
-import os
 
 # ------------------------------
 # CONFIG
@@ -11,7 +11,7 @@ import os
 st.set_page_config(
     page_title="Vendor Demand Forecasting - Fresh Basket",
     page_icon="📦",
-    layout="centered"
+    layout="wide"    # give us more room (also helps on mobile landscape)
 )
 
 # ------------------------------
@@ -24,13 +24,44 @@ ss.setdefault("projection", None)
 ss.setdefault("proj_df", None)
 ss.setdefault("show_upload", False)
 
-DEFAULT_FILE = "vendor_data.xlsx"  # 🔹 Put your Excel file here in same folder
+# ------------------------------
+# GLOBAL CSS (center + larger font + hide inner scrollbars)
+# ------------------------------
+st.markdown("""
+<style>
+/* Center and enlarge all dataframe/editor cells */
+div[data-testid="stDataFrame"] table,
+div[data-testid="stDataEditor"] table,
+div[data-testid="stDataFrame"] th, div[data-testid="stDataFrame"] td,
+div[data-testid="stDataEditor"] th, div[data-testid="stDataEditor"] td {
+    text-align: center !important;
+    vertical-align: middle !important;
+    font-size: 20px !important;
+}
+
+/* keep grids full width */
+div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] { width: 100% !important; }
+
+/* invoice textarea: always tall enough, no inner scrollbar */
+textarea {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 640px !important;
+    font-size: 18px !important;
+}
+
+/* nicer buttons on small screens */
+@media (max-width: 768px) {
+  .stButton>button { width:100% !important; padding:14px !important; font-size:18px !important; }
+}
+</style>
+""", unsafe_allow_html=True)
 
 # ------------------------------
 # HELPERS
 # ------------------------------
 def parse_excel(uploaded_file) -> dict:
-    """Return {sheet_name: [[Product, 1d, 2d, 5d], ...]} with ints (NaN -> 0)."""
+    """Return {sheet_name: [[Product, 1d, 2d, 5d], ...]} with ints (NaN -> 0), skipping blank rows."""
     excel_file = pd.ExcelFile(uploaded_file)
     data = {}
     for sheet in excel_file.sheet_names:
@@ -45,10 +76,7 @@ def parse_excel(uploaded_file) -> dict:
                     return int(float(x))
                 except Exception:
                     return 0
-            p1 = num(r.iloc[1])
-            p2 = num(r.iloc[2])
-            p3 = num(r.iloc[3])
-            rows.append([name, p1, p2, p3])
+            rows.append([name, num(r.iloc[1]), num(r.iloc[2]), num(r.iloc[3])])
         if rows:
             data[sheet] = rows
     return data
@@ -72,12 +100,13 @@ def build_invoice_text(vendor: str, branch: str, items: list[list]) -> str:
 
 def copy_button(label: str, text_to_copy: str, key: str):
     """Render a JS button that copies text_to_copy to clipboard."""
-    safe = text_to_copy.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    safe = (text_to_copy
+            .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
     html = f"""
     <div>
       <button id="btn-{key}" style="
-        background:#6c5ce7;color:white;border:none;border-radius:6px;
-        padding:8px 14px;cursor:pointer;font-weight:600;">{label}</button>
+        background:#6c5ce7;color:white;border:none;border-radius:8px;
+        padding:12px 18px;cursor:pointer;font-weight:700;">{label}</button>
       <textarea id="txt-{key}" style="position:absolute;left:-9999px;top:-9999px;">{safe}</textarea>
     </div>
     <script>
@@ -86,49 +115,51 @@ def copy_button(label: str, text_to_copy: str, key: str):
       btn.onclick = async () => {{
         try {{
           await navigator.clipboard.writeText(txt.value);
-          const old = btn.innerText;
-          btn.innerText = "Copied!";
+          const old = btn.innerText; btn.innerText = "Copied!";
           setTimeout(()=>btn.innerText = old, 1200);
-        }} catch(e) {{
-          alert("Copy failed. Please copy manually.");
-        }}
+        }} catch(e) {{ alert("Copy failed. Please copy manually."); }}
       }};
     </script>
     """
-    components.html(html, height=50)
+    components.html(html, height=60)
+
+def table_height(n_rows: int) -> int:
+    """Return a height large enough to show all rows (no vertical scrollbar)."""
+    row_h = 44  # good default for Streamlit grid row height
+    header_h = 64
+    return min(2200, header_h + n_rows * row_h)
 
 # ------------------------------
 # HEADER WITH LOGO
 # ------------------------------
-col1, col2 = st.columns([1, 6])
+col1, col2 = st.columns([1, 6], vertical_alignment="center")
 with col1:
-    st.image("fresh basket logo.jfif", width=120)
-  # 🔹 Place your logo file here
+    # Use your uploaded filename; guard if missing.
+    logo_candidates = ["fresh_basket_logo.png", "fresh basket logo.jfif"]
+    logo_path = next((p for p in logo_candidates if os.path.exists(p)), None)
+    if logo_path:
+        st.image(logo_path, width=160)   # bigger logo
 with col2:
     st.title("Vendors Demand Forecasting")
 st.caption("Powered by Fresh Basket • Mobile Friendly • Fast & Dynamic")
 
 # ------------------------------
-# LOAD DEFAULT / UPLOAD
+# UPLOAD (kept)
 # ------------------------------
 if not ss.vendor_data:
-    if os.path.exists(DEFAULT_FILE):
-        ss.vendor_data = parse_excel(DEFAULT_FILE)
-        st.success(f"✅ Loaded default file: {DEFAULT_FILE} with {len(ss.vendor_data)} vendors")
-    else:
-        uploaded = st.file_uploader("📑 Upload Excel File", type=["xlsx", "xls"], key="first_upload")
-        if uploaded:
-            ss.vendor_data = parse_excel(uploaded)
-            if ss.vendor_data:
-                st.success(f"✅ Loaded {len(ss.vendor_data)} vendors")
-                ss.show_upload = False
-            else:
-                st.error("No valid rows found. Please check your Excel file.")
+    uploaded = st.file_uploader("📑 Upload Excel File", type=["xlsx", "xls"], key="first_upload")
+    if uploaded:
+        ss.vendor_data = parse_excel(uploaded)
+        if ss.vendor_data:
+            st.success(f"✅ Loaded {len(ss.vendor_data)} vendors")
+            ss.show_upload = False
+        else:
+            st.error("No valid rows found. Please check your Excel file.")
 else:
-    cols = st.columns([1, 1])
-    with cols[0]:
+    c1, c2 = st.columns([1, 1])
+    with c1:
         st.success(f"✅ Current dataset loaded: **{len(ss.vendor_data)} vendors**")
-    with cols[1]:
+    with c2:
         if st.button("📤 Upload New Excel File"):
             ss.show_upload = True
 
@@ -150,40 +181,51 @@ else:
 # ------------------------------
 if ss.vendor_data:
     vendors = list(ss.vendor_data.keys())
-    vendor = st.selectbox("🔍 Select Vendor", vendors, index=0 if ss.current_vendor is None else vendors.index(ss.current_vendor))
-    branch = st.selectbox("🏬 Select Branch", ["Shahbaz", "Clifton", "BHD"])
+    vendor = st.selectbox(
+        "🔍 Select Vendor",
+        vendors,
+        index=0 if ss.current_vendor is None else vendors.index(ss.current_vendor),
+    )
+
+    # ✅ Updated branch list (your request)
+    branch = st.selectbox(
+        "🏬 Select Branch",
+        ["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"]
+    )
 
     ss.current_vendor = vendor
     rows = ss.vendor_data[vendor]
 
-    # Base DataFrame
+    # Build base DataFrame and drop blanks
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
-    df["On Hand"] = 0  # editable
+    df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
+    df["On Hand"] = 0
 
     st.markdown("### 📋 Product Data (enter On Hand only)")
     edited = st.data_editor(
         df,
-        width="stretch",
-        hide_index=True,
+        use_container_width=True,
+        hide_index=True,                 # no serial numbers
+        height=table_height(len(df)),    # ✅ show all rows (no inner scroll)
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="small"),
+            "Product": st.column_config.Column(disabled=True, width="medium"),
             "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
             "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
             "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
-            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, help="Enter On Hand qty"),
+            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="small"),
         }
     )
 
     st.divider()
     st.markdown("### 📊 Choose Projection")
-    c1, c2, c3 = st.columns(3)
-    with c1:
+    pc1, pc2, pc3 = st.columns(3)
+    with pc1:
         if st.button("1 Day"):
             ss.projection = "1"
-    with c2:
+    with pc2:
         if st.button("2 Days"):
             ss.projection = "2"
-    with c3:
+    with pc3:
         if st.button("5 Days"):
             ss.projection = "5"
 
@@ -192,30 +234,31 @@ if ss.vendor_data:
         header = {"1": "1 Day Projection", "2": "2 Days Projection", "5": "5 Days Projection"}[ss.projection]
 
         tmp = edited.fillna(0).copy()
-        for col in ["1 Day", "2 Days", "5 Days", "On Hand"]:
-            tmp[col] = tmp[col].apply(lambda x: int(x) if pd.notna(x) else 0)
+        for c in ["1 Day", "2 Days", "5 Days", "On Hand"]:
+            tmp[c] = tmp[c].apply(lambda x: int(x) if pd.notna(x) else 0)
 
         tmp[header] = tmp.apply(lambda r: max(0, int(r[base_col]) - int(r["On Hand"])), axis=1)
         ss.proj_df = tmp
 
-        # Must require at least one On Hand entry
         if not any(tmp["On Hand"] > 0):
             st.warning("⚠️ Please enter On Hand for at least one product before saving.")
         else:
             st.success(f"✅ Showing {header}")
             show = tmp[["Product", "1 Day", "2 Days", "5 Days", "On Hand", header]].copy()
-            for col in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
-                show[col] = show[col].astype(int)
+            show = show[show["Product"].notna() & (show["Product"].str.strip() != "")]
+            for c in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
+                show[c] = show[c].astype(int)
 
-            styled = show.style.set_properties(**{'text-align': 'center', 'font-size': '16px'}) \
-                               .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center'), ('font-size', '16px')]}])
-            st.dataframe(styled, width="stretch")
+            # ✅ hide index (no serial numbers) + full height
+            st.dataframe(
+                show,
+                use_container_width=True,
+                height=table_height(len(show)),
+                hide_index=True
+            )
 
             st.markdown("### 🧾 Invoice")
-            cols = st.columns(2)
-            with cols[0]:
-                save_invoice = st.button("💾 Save & Show Invoice")
-            if save_invoice:
+            if st.button("💾 Save & Show Invoice"):
                 use = show[["Product", header]]
                 use = use[use[header] > 0]
                 if use.empty:
@@ -224,13 +267,16 @@ if ss.vendor_data:
                     items = use.values.tolist()
                     invoice_text = build_invoice_text(vendor, branch, items)
 
-                    st.text_area("Invoice Preview", invoice_text, height=280)
+                    # ✅ dynamic height = all lines visible (no scroll)
+                    n_lines = invoice_text.count("\n") + 1
+                    ta_height = min(1600, max(500, 28 * n_lines + 80))
+                    st.text_area("Invoice Preview", invoice_text, height=ta_height, key="invoice_edit")
 
                     quoted = urllib.parse.quote(invoice_text)
                     wa_url = f"https://wa.me/?text={quoted}"
 
-                    cols2 = st.columns(2)
-                    with cols2[0]:
+                    ic1, ic2 = st.columns(2)
+                    with ic1:
                         st.markdown(f"[📲 Send via WhatsApp]({wa_url})", unsafe_allow_html=True)
-                    with cols2[1]:
+                    with ic2:
                         copy_button("📋 Copy Invoice", invoice_text, key="inv1")
