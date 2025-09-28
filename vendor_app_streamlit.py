@@ -11,7 +11,7 @@ import streamlit.components.v1 as components
 st.set_page_config(
     page_title="Vendor Demand Forecasting - Fresh Basket",
     page_icon="📦",
-    layout="wide"    # give us more room (also helps on mobile landscape)
+    layout="centered"   # back to centered for mobile-friendly feel
 )
 
 # ------------------------------
@@ -25,32 +25,37 @@ ss.setdefault("proj_df", None)
 ss.setdefault("show_upload", False)
 
 # ------------------------------
-# GLOBAL CSS (center + larger font + hide inner scrollbars)
+# GLOBAL CSS (mobile-first)
 # ------------------------------
 st.markdown("""
 <style>
-/* Center and enlarge all dataframe/editor cells */
+/* Constrain page on desktop, full width on mobile */
+.block-container {max-width: 980px; padding-top: 1rem;}
+@media (max-width: 768px) {.block-container {max-width: 100%; padding-left: 0.8rem; padding-right: 0.8rem;}}
+
+/* Center + enlarge table text */
 div[data-testid="stDataFrame"] table,
 div[data-testid="stDataEditor"] table,
 div[data-testid="stDataFrame"] th, div[data-testid="stDataFrame"] td,
 div[data-testid="stDataEditor"] th, div[data-testid="stDataEditor"] td {
-    text-align: center !important;
-    vertical-align: middle !important;
-    font-size: 20px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  font-size: 18px !important;
+  white-space: normal !important;   /* wrap product names instead of widening */
 }
 
-/* keep grids full width */
+/* Keep grids full width of container */
 div[data-testid="stDataFrame"], div[data-testid="stDataEditor"] { width: 100% !important; }
 
-/* invoice textarea: always tall enough, no inner scrollbar */
+/* Invoice textarea: tall enough, no inner scrollbar */
 textarea {
-    width: 100% !important;
-    height: auto !important;
-    min-height: 640px !important;
-    font-size: 18px !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 560px !important;
+  font-size: 18px !important;
 }
 
-/* nicer buttons on small screens */
+/* Bigger buttons on phones */
 @media (max-width: 768px) {
   .stButton>button { width:100% !important; padding:14px !important; font-size:18px !important; }
 }
@@ -124,21 +129,21 @@ def copy_button(label: str, text_to_copy: str, key: str):
     components.html(html, height=60)
 
 def table_height(n_rows: int) -> int:
-    """Return a height large enough to show all rows (no vertical scrollbar)."""
-    row_h = 44  # good default for Streamlit grid row height
+    """Height large enough to show all rows (no inner vertical scroll)."""
+    row_h = 44
     header_h = 64
-    return min(2200, header_h + n_rows * row_h)
+    return min(2000, header_h + n_rows * row_h)
 
 # ------------------------------
 # HEADER WITH LOGO
 # ------------------------------
 col1, col2 = st.columns([1, 6], vertical_alignment="center")
 with col1:
-    # Use your uploaded filename; guard if missing.
+    # Try both typical filenames so you don't crash if one is missing
     logo_candidates = ["fresh_basket_logo.png", "fresh basket logo.jfif"]
     logo_path = next((p for p in logo_candidates if os.path.exists(p)), None)
     if logo_path:
-        st.image(logo_path, width=160)   # bigger logo
+        st.image(logo_path, width=150)
 with col2:
     st.title("Vendors Demand Forecasting")
 st.caption("Powered by Fresh Basket • Mobile Friendly • Fast & Dynamic")
@@ -187,7 +192,7 @@ if ss.vendor_data:
         index=0 if ss.current_vendor is None else vendors.index(ss.current_vendor),
     )
 
-    # ✅ Updated branch list (your request)
+    # Updated branches
     branch = st.selectbox(
         "🏬 Select Branch",
         ["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"]
@@ -196,7 +201,7 @@ if ss.vendor_data:
     ss.current_vendor = vendor
     rows = ss.vendor_data[vendor]
 
-    # Build base DataFrame and drop blanks
+    # Base DataFrame (drop blanks)
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
     df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
     df["On Hand"] = 0
@@ -206,7 +211,7 @@ if ss.vendor_data:
         df,
         use_container_width=True,
         hide_index=True,                 # no serial numbers
-        height=table_height(len(df)),    # ✅ show all rows (no inner scroll)
+        height=table_height(len(df)),    # show all rows (no inner scroll)
         column_config={
             "Product": st.column_config.Column(disabled=True, width="medium"),
             "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="small"),
@@ -249,7 +254,7 @@ if ss.vendor_data:
             for c in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
                 show[c] = show[c].astype(int)
 
-            # ✅ hide index (no serial numbers) + full height
+            # hide index (no serials) + full height
             st.dataframe(
                 show,
                 use_container_width=True,
@@ -267,9 +272,9 @@ if ss.vendor_data:
                     items = use.values.tolist()
                     invoice_text = build_invoice_text(vendor, branch, items)
 
-                    # ✅ dynamic height = all lines visible (no scroll)
+                    # dynamic height = all lines visible
                     n_lines = invoice_text.count("\n") + 1
-                    ta_height = min(1600, max(500, 28 * n_lines + 80))
+                    ta_height = min(1600, max(520, 28 * n_lines + 80))
                     st.text_area("Invoice Preview", invoice_text, height=ta_height, key="invoice_edit")
 
                     quoted = urllib.parse.quote(invoice_text)
