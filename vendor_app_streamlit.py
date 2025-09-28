@@ -63,15 +63,15 @@ div[data-testid="stDataEditor"] td {
 
 /* Product Data table: Product = 40%, rest 15% */
 div.product-table th:nth-child(1),
-div.product-table td:nth-child(1) { width: 30% !important; }
+div.product-table td:nth-child(1) { width: 40% !important; }
 div.product-table th:nth-child(n+2),
-div.product-table td:nth-child(n+2) { width: 10% !important; }
+div.product-table td:nth-child(n+2) { width: 5% !important; }
 
 /* Projection table: Product = 30%, others auto */
 div.projection-table th:nth-child(1),
-div.projection-table td:nth-child(1) { width: 15% !important; }
+div.projection-table td:nth-child(1) { width: 10% !important; }
 div.projection-table th:nth-child(n+2),
-div.projection-table td:nth-child(n+2) { width: 8% !important; }
+div.projection-table td:nth-child(n+2) { width: 5% !important; }
 
 /* Invoice textarea */
 textarea {
