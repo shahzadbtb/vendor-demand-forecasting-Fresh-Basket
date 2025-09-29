@@ -49,20 +49,32 @@ div[data-testid="stDataEditor"] table {
   width: 100% !important;
 }
 
-/* Hide column headers completely */
-div[data-testid="stDataEditor"] thead,
-div[data-testid="stDataFrame"] thead {
+/* Hide ONLY Product Data (stDataEditor) column headers */
+div[data-testid="stDataEditor"] thead {
   display: none !important;
 }
 
-/* Product Data table widths for MOBILE */
+/* Column alignment */
+div[data-testid="stDataFrame"] th,
+div[data-testid="stDataFrame"] td,
+div[data-testid="stDataEditor"] th,
+div[data-testid="stDataEditor"] td {
+  text-align: center !important;
+  vertical-align: middle !important;
+  font-size: 14px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  padding: 3px !important;
+}
+
+/* Product Data table widths */
 div[data-testid="stDataEditor"] th:nth-child(1),
 div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 55% !important;   /* Product wide */
+  width: 45% !important;   /* Product */
 }
 div[data-testid="stDataEditor"] th:nth-child(2),
 div[data-testid="stDataEditor"] td:nth-child(2) {
-  width: 8% !important;    /* On Hand slim */
+  width: 10% !important;   /* On Hand */
 }
 div[data-testid="stDataEditor"] th:nth-child(3),
 div[data-testid="stDataEditor"] td:nth-child(3),
@@ -70,17 +82,17 @@ div[data-testid="stDataEditor"] th:nth-child(4),
 div[data-testid="stDataEditor"] td:nth-child(4),
 div[data-testid="stDataEditor"] th:nth-child(5),
 div[data-testid="stDataEditor"] td:nth-child(5) {
-  width: 12% !important;   /* Days slim */
+  width: 15% !important;   /* Days */
 }
 
-/* Projection table widths */
+/* Projection table widths (keep headers visible) */
 div[data-testid="stDataFrame"] th:nth-child(1),
 div[data-testid="stDataFrame"] td:nth-child(1) {
-  width: 45% !important;   /* Product wider */
+  width: 40% !important;
 }
 div[data-testid="stDataFrame"] th:nth-child(n+2),
 div[data-testid="stDataFrame"] td:nth-child(n+2) {
-  width: 11% !important;   /* Others smaller */
+  width: 12% !important;
 }
 
 /* Invoice textarea */
@@ -230,10 +242,10 @@ if ss.vendor_data:
     ss.current_vendor = vendor
     rows = ss.vendor_data[vendor]
 
-    # Keep "On Hand" fixed after Product
+    # Insert On Hand after Product
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
     df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
-    df.insert(1, "On Hand", 0)  # insert right after Product
+    df.insert(1, "On Hand", 0)
 
     st.markdown("### 📋 Product Data (enter On Hand only)")
     edited = st.data_editor(
@@ -242,13 +254,13 @@ if ss.vendor_data:
         hide_index=True,
         height=table_height(len(df)),
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="large"),
-            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="xx-small"),
-            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
-            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
-            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
+            "Product": st.column_config.Column(disabled=True),
+            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1),
+            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True),
+            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True),
+            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True),
         },
-        disabled=["Product", "1 Day", "2 Days", "5 Days"],  # lock those columns fully
+        disabled=["Product", "1 Day", "2 Days", "5 Days"],
     )
 
     st.divider()
