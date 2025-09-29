@@ -49,6 +49,13 @@ div[data-testid="stDataEditor"] table {
   width: 100% !important;
 }
 
+/* Hide 3-dot column menu */
+div[data-testid="stDataEditor"] div[role="button"],
+div[data-testid="stDataFrame"] div[role="button"] {
+  display: none !important;
+}
+
+/* Column alignment */
 div[data-testid="stDataFrame"] th,
 div[data-testid="stDataFrame"] td,
 div[data-testid="stDataEditor"] th,
@@ -61,24 +68,28 @@ div[data-testid="stDataEditor"] td {
   padding: 3px !important;
 }
 
-/* Product Data table (st.data_editor) */
+/* Product Data table widths */
 div[data-testid="stDataEditor"] th:nth-child(1),
 div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 50% !important;   /* Product column wider */
+  width: 55% !important;   /* Product wider */
 }
-div[data-testid="stDataEditor"] th:nth-child(n+2),
-div[data-testid="stDataEditor"] td:nth-child(n+2) {
-  width: 12% !important;   /* Day 1, Day 2, Day 3, On Hand smaller */
+div[data-testid="stDataEditor"] th:nth-child(2),
+div[data-testid="stDataEditor"] td:nth-child(2) {
+  width: 6% !important;    /* On Hand reduced */
+}
+div[data-testid="stDataEditor"] th:nth-child(n+3),
+div[data-testid="stDataEditor"] td:nth-child(n+3) {
+  width: 13% !important;   /* Day columns */
 }
 
-/* Projection table (st.dataframe) */
+/* Projection table widths */
 div[data-testid="stDataFrame"] th:nth-child(1),
 div[data-testid="stDataFrame"] td:nth-child(1) {
-  width: 30% !important;   /* Product smaller than data editor */
+  width: 35% !important;
 }
 div[data-testid="stDataFrame"] th:nth-child(n+2),
 div[data-testid="stDataFrame"] td:nth-child(n+2) {
-  width: 14% !important;
+  width: 13% !important;
 }
 
 /* Invoice textarea */
@@ -228,10 +239,10 @@ if ss.vendor_data:
     ss.current_vendor = vendor
     rows = ss.vendor_data[vendor]
 
-    # Filtered DataFrame: no blank rows
+    # Keep "On Hand" fixed after Product
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
     df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
-    df["On Hand"] = 0
+    df.insert(1, "On Hand", 0)  # insert right after Product
 
     st.markdown("### 📋 Product Data (enter On Hand only)")
     edited = st.data_editor(
@@ -240,12 +251,13 @@ if ss.vendor_data:
         hide_index=True,
         height=table_height(len(df)),
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="medium"),  # wider
+            "Product": st.column_config.Column(disabled=True, width="large"),
+            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="xx-small"),
             "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
             "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
             "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
-            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="x-small"),
-        }
+        },
+        disabled=["Product", "1 Day", "2 Days", "5 Days"],  # lock those columns fully
     )
 
     st.divider()
@@ -273,7 +285,7 @@ if ss.vendor_data:
             st.warning("⚠️ Please enter On Hand for at least one product before saving.")
         else:
             st.success(f"✅ Showing {header}")
-            show = tmp[["Product", "1 Day", "2 Days", "5 Days", "On Hand", header]].copy()
+            show = tmp[["Product", "On Hand", "1 Day", "2 Days", "5 Days", header]].copy()
             show = show[show["Product"].notna() & (show["Product"].str.strip() != "")]
             for c in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
                 show[c] = show[c].astype(int)
