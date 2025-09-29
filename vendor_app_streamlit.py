@@ -49,7 +49,7 @@ div[data-testid="stDataEditor"] table {
   width: 100% !important;
 }
 
-/* ---- HIDE Product Data Editor headers (only) ---- */
+/* Hide headers for Product Data table only */
 div[data-testid="stDataEditor"] thead tr {
   display: none !important;
 }
@@ -61,7 +61,7 @@ div[data-testid="stDataEditor"] th,
 div[data-testid="stDataEditor"] td {
   text-align: center !important;
   vertical-align: middle !important;
-  font-size: 13px !important; /* slightly smaller font for mobile */
+  font-size: 13px !important;
   white-space: normal !important;
   word-break: break-word !important;
   padding: 3px !important;
@@ -70,11 +70,11 @@ div[data-testid="stDataEditor"] td {
 /* Product Data table widths */
 div[data-testid="stDataEditor"] th:nth-child(1),
 div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 38% !important;   /* Just enough for "Original Greek Yogurt" */
+  width: 38% !important;   /* Product */
 }
 div[data-testid="stDataEditor"] th:nth-child(2),
 div[data-testid="stDataEditor"] td:nth-child(2) {
-  width: 10% !important;   /* On Hand (small) */
+  width: 10% !important;   /* On Hand */
 }
 div[data-testid="stDataEditor"] th:nth-child(3),
 div[data-testid="stDataEditor"] td:nth-child(3),
@@ -82,17 +82,17 @@ div[data-testid="stDataEditor"] th:nth-child(4),
 div[data-testid="stDataEditor"] td:nth-child(4),
 div[data-testid="stDataEditor"] th:nth-child(5),
 div[data-testid="stDataEditor"] td:nth-child(5) {
-  width: 17% !important;   /* Days (equal width) */
+  width: 17% !important;   /* Days */
 }
 
-/* Projection table widths (keep headers visible) */
+/* Projection table widths */
 div[data-testid="stDataFrame"] th:nth-child(1),
 div[data-testid="stDataFrame"] td:nth-child(1) {
-  width: 40% !important;
+  width: 60% !important;   /* Product */
 }
-div[data-testid="stDataFrame"] th:nth-child(n+2),
-div[data-testid="stDataFrame"] td:nth-child(n+2) {
-  width: 12% !important;
+div[data-testid="stDataFrame"] th:nth-child(2),
+div[data-testid="stDataFrame"] td:nth-child(2) {
+  width: 40% !important;   /* Projection column */
 }
 
 /* Invoice textarea */
@@ -288,10 +288,11 @@ if ss.vendor_data:
             st.warning("⚠️ Please enter On Hand for at least one product before saving.")
         else:
             st.success(f"✅ Showing {header}")
-            show = tmp[["Product", "On Hand", "1 Day", "2 Days", "5 Days", header]].copy()
+
+            # ---- Show ONLY Product + Projection column ----
+            show = tmp[["Product", header]].copy()
             show = show[show["Product"].notna() & (show["Product"].str.strip() != "")]
-            for c in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
-                show[c] = show[c].astype(int)
+            show[header] = show[header].astype(int)
 
             st.dataframe(show, use_container_width=True, height=table_height(len(show)), hide_index=True)
 
