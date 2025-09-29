@@ -49,7 +49,7 @@ div[data-testid="stDataEditor"] table {
   width: 100% !important;
 }
 
-/* ---- HIDE Product Data Editor headers (only) ---- */
+/* Hide headers for Product Data table only */
 div[data-testid="stDataEditor"] thead tr {
   display: none !important;
 }
@@ -61,38 +61,35 @@ div[data-testid="stDataEditor"] th,
 div[data-testid="stDataEditor"] td {
   text-align: center !important;
   vertical-align: middle !important;
-  font-size: 13px !important; /* slightly smaller font for mobile */
+  font-size: 13px !important;
   white-space: normal !important;
   word-break: break-word !important;
   padding: 3px !important;
 }
 
 /* Product Data table widths */
-div[data-testid="stDataEditor"] th:nth-child(1),
 div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 38% !important;   /* Just enough for "Original Greek Yogurt" */
+  width: 38% !important;   /* Product */
+  text-align: left !important;
 }
-div[data-testid="stDataEditor"] th:nth-child(2),
 div[data-testid="stDataEditor"] td:nth-child(2) {
-  width: 10% !important;   /* On Hand (small) */
+  width: 10% !important;   /* On Hand */
 }
-div[data-testid="stDataEditor"] th:nth-child(3),
 div[data-testid="stDataEditor"] td:nth-child(3),
-div[data-testid="stDataEditor"] th:nth-child(4),
 div[data-testid="stDataEditor"] td:nth-child(4),
-div[data-testid="stDataEditor"] th:nth-child(5),
 div[data-testid="stDataEditor"] td:nth-child(5) {
-  width: 17% !important;   /* Days (equal width) */
+  width: 17% !important;   /* Days */
 }
 
-/* Projection table widths (keep headers visible) */
-div[data-testid="stDataFrame"] th:nth-child(1),
+/* Projection table widths */
 div[data-testid="stDataFrame"] td:nth-child(1) {
-  width: 40% !important;
+  width: 60% !important;   /* Product */
+  text-align: left !important;
 }
-div[data-testid="stDataFrame"] th:nth-child(n+2),
-div[data-testid="stDataFrame"] td:nth-child(n+2) {
-  width: 12% !important;
+div[data-testid="stDataFrame"] td:nth-child(2) {
+  width: 40% !important;   /* Projection column */
+  text-align: left !important;
+  padding-left: 12px !important;
 }
 
 /* Invoice textarea */
@@ -111,7 +108,6 @@ textarea {
 # HELPERS
 # ------------------------------
 def parse_excel(uploaded_file) -> dict:
-    """Return {sheet_name: [[Product, 1d, 2d, 5d], ...]}, skipping blank rows."""
     excel_file = pd.ExcelFile(uploaded_file)
     data = {}
     for sheet in excel_file.sheet_names:
@@ -119,13 +115,11 @@ def parse_excel(uploaded_file) -> dict:
         rows = []
         for _, r in raw.iterrows():
             name = "" if pd.isna(r.iloc[0]) else str(r.iloc[0]).strip()
-            if not name:  # skip blanks
+            if not name:
                 continue
             def num(x):
-                try:
-                    return int(float(x))
-                except Exception:
-                    return 0
+                try: return int(float(x))
+                except: return 0
             rows.append([name, num(r.iloc[1]), num(r.iloc[2]), num(r.iloc[3])])
         if rows:
             data[sheet] = rows
@@ -142,8 +136,7 @@ def build_invoice_text(vendor: str, branch: str, items: list[list]) -> str:
     ]
     total = 0
     for product, qty in items:
-        q = int(qty)
-        total += q
+        q = int(qty); total += q
         lines.append(f"- {product}: {q}")
     lines += ["", f"*TOTAL ITEMS:* {len(items)}", f"*TOTAL QTY:* {total}"]
     return "\n".join(lines)
@@ -173,9 +166,7 @@ def copy_button(label: str, text_to_copy: str, key: str):
     components.html(html, height=60)
 
 def table_height(n_rows: int) -> int:
-    row_h = 42
-    header_h = 52
-    return min(1600, header_h + n_rows * row_h)
+    return min(1600, 52 + n_rows * 42)
 
 # ------------------------------
 # HEADER
@@ -204,19 +195,14 @@ if not ss.vendor_data:
             st.error("No valid rows found. Please check your Excel file.")
 else:
     c1, c2 = st.columns([1, 1])
-    with c1:
-        st.success(f"✅ Current dataset loaded: **{len(ss.vendor_data)} vendors**")
+    with c1: st.success(f"✅ Current dataset loaded: **{len(ss.vendor_data)} vendors**")
     with c2:
-        if st.button("📤 Upload New Excel File"):
-            ss.show_upload = True
-
+        if st.button("📤 Upload New Excel File"): ss.show_upload = True
     if ss.show_upload:
         new_file = st.file_uploader("Upload New Excel File", type=["xlsx", "xls"], key="replace_upload")
         if new_file:
             ss.vendor_data = parse_excel(new_file)
-            ss.current_vendor = None
-            ss.projection = None
-            ss.proj_df = None
+            ss.current_vendor = None; ss.projection = None; ss.proj_df = None
             ss.show_upload = False
             if ss.vendor_data:
                 st.success(f"✅ Replaced dataset. Loaded {len(ss.vendor_data)} vendors.")
@@ -228,90 +214,66 @@ else:
 # ------------------------------
 if ss.vendor_data:
     vendors = list(ss.vendor_data.keys())
-    vendor = st.selectbox(
-        "🔍 Select Vendor",
-        vendors,
-        index=0 if ss.current_vendor is None else vendors.index(ss.current_vendor),
-    )
+    vendor = st.selectbox("🔍 Select Vendor", vendors, 
+                          index=0 if ss.current_vendor is None else vendors.index(ss.current_vendor))
+    branch = st.selectbox("🏬 Select Branch",
+                          ["Shahbaz","Clifton","Badar","DHA Ecom","BHD Ecom","BHD","Head Office"])
+    ss.current_vendor = vendor; rows = ss.vendor_data[vendor]
 
-    branch = st.selectbox(
-        "🏬 Select Branch",
-        ["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"]
-    )
-
-    ss.current_vendor = vendor
-    rows = ss.vendor_data[vendor]
-
-    # Insert On Hand after Product
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
     df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
     df.insert(1, "On Hand", 0)
 
     st.markdown("### 📋 Product Data (enter On Hand only)")
-    edited = st.data_editor(
-        df,
-        use_container_width=True,
-        hide_index=True,
-        height=table_height(len(df)),
-        column_config={
-            "Product": st.column_config.Column(disabled=True),
-            "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1),
-            "1 Day": st.column_config.NumberColumn(format="%d", disabled=True),
-            "2 Days": st.column_config.NumberColumn(format="%d", disabled=True),
-            "5 Days": st.column_config.NumberColumn(format="%d", disabled=True),
-        },
-        disabled=["Product", "1 Day", "2 Days", "5 Days"],
-    )
+    edited = st.data_editor(df, use_container_width=True, hide_index=True,
+                            height=table_height(len(df)),
+                            column_config={
+                                "Product": st.column_config.Column(disabled=True),
+                                "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1),
+                                "1 Day": st.column_config.NumberColumn(format="%d", disabled=True),
+                                "2 Days": st.column_config.NumberColumn(format="%d", disabled=True),
+                                "5 Days": st.column_config.NumberColumn(format="%d", disabled=True),
+                            },
+                            disabled=["Product","1 Day","2 Days","5 Days"])
 
-    st.divider()
-    st.markdown("### 📊 Choose Projection")
-    pc1, pc2, pc3 = st.columns(3)
-    with pc1:
-        if st.button("1 Day"): ss.projection = "1"
-    with pc2:
-        if st.button("2 Days"): ss.projection = "2"
-    with pc3:
-        if st.button("5 Days"): ss.projection = "5"
+    st.divider(); st.markdown("### 📊 Choose Projection")
+    
+    # --- Projection buttons stacked vertically ---
+    if st.button("1 Day"): ss.projection = "1"
+    if st.button("2 Days"): ss.projection = "2"
+    if st.button("5 Days"): ss.projection = "5"
 
     if ss.projection:
-        base_col = {"1": "1 Day", "2": "2 Days", "5": "5 Days"}[ss.projection]
-        header = {"1": "1 Day Projection", "2": "2 Days Projection", "5": "5 Days Projection"}[ss.projection]
-
+        base_col = {"1":"1 Day","2":"2 Days","5":"5 Days"}[ss.projection]
+        header = {"1":"1 Day Projection","2":"2 Days Projection","5":"5 Days Projection"}[ss.projection]
         tmp = edited.fillna(0).copy()
-        for c in ["1 Day", "2 Days", "5 Days", "On Hand"]:
+        for c in ["1 Day","2 Days","5 Days","On Hand"]:
             tmp[c] = tmp[c].apply(lambda x: int(x) if pd.notna(x) else 0)
-
-        tmp[header] = tmp.apply(lambda r: max(0, int(r[base_col]) - int(r["On Hand"])), axis=1)
+        tmp[header] = tmp.apply(lambda r: max(0,int(r[base_col])-int(r["On Hand"])),axis=1)
         ss.proj_df = tmp
 
-        if not any(tmp["On Hand"] > 0):
+        if not any(tmp["On Hand"]>0):
             st.warning("⚠️ Please enter On Hand for at least one product before saving.")
         else:
             st.success(f"✅ Showing {header}")
-            show = tmp[["Product", "On Hand", "1 Day", "2 Days", "5 Days", header]].copy()
-            show = show[show["Product"].notna() & (show["Product"].str.strip() != "")]
-            for c in ["1 Day", "2 Days", "5 Days", "On Hand", header]:
-                show[c] = show[c].astype(int)
-
-            st.dataframe(show, use_container_width=True, height=table_height(len(show)), hide_index=True)
+            show = tmp[["Product", header]].copy()
+            show[header] = show[header].astype(int)
+            st.dataframe(show, use_container_width=True, hide_index=True, height=table_height(len(show)))
 
             st.markdown("### 🧾 Invoice")
             if st.button("💾 Save & Show Invoice"):
-                use = show[["Product", header]]
-                use = use[use[header] > 0]
-                if use.empty:
-                    st.warning("⚠️ No demand > 0 in the selected projection.")
+                use = show[["Product", header]][show[header]>0]
+                if use.empty: st.warning("⚠️ No demand > 0 in the selected projection.")
                 else:
                     items = use.values.tolist()
                     invoice_text = build_invoice_text(vendor, branch, items)
-
-                    n_lines = invoice_text.count("\n") + 1
-                    ta_height = min(1600, max(520, 28 * n_lines + 80))
-                    st.text_area("Invoice Preview", invoice_text, height=ta_height, key="invoice_edit")
-
-                    quoted = urllib.parse.quote(invoice_text)
-                    wa_url = f"https://wa.me/?text={quoted}"
-
-                    ic1, ic2 = st.columns(2)
+                    st.text_area("Invoice Preview", invoice_text,
+                                 height=min(1600,max(520,28*(invoice_text.count("\\n")+1)+80)),
+                                 key="invoice_edit")
+                    wa_url = f"https://wa.me/?text={urllib.parse.quote(invoice_text)}"
+                    
+                    # Two WhatsApp buttons + copy button
+                    ic1, ic2, ic3 = st.columns(3)
                     with ic1: st.markdown(f"[📲 Send via WhatsApp]({wa_url})", unsafe_allow_html=True)
-                    with ic2: copy_button("📋 Copy Invoice", invoice_text, key="inv1")
+                    with ic2: st.markdown(f"[📲 Send via WhatsApp]({wa_url})", unsafe_allow_html=True)
+                    with ic3: copy_button("📋 Copy Invoice", invoice_text, key="inv1")
