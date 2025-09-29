@@ -49,8 +49,8 @@ div[data-testid="stDataEditor"] table {
   width: 100% !important;
 }
 
-/* Hide ONLY Product Data (stDataEditor) column headers */
-div[data-testid="stDataEditor"] thead {
+/* ---- HIDE Product Data Editor headers (only) ---- */
+div[data-testid="stDataEditor"] thead tr {
   display: none !important;
 }
 
@@ -61,7 +61,7 @@ div[data-testid="stDataEditor"] th,
 div[data-testid="stDataEditor"] td {
   text-align: center !important;
   vertical-align: middle !important;
-  font-size: 14px !important;
+  font-size: 13px !important; /* slightly smaller font for mobile */
   white-space: normal !important;
   word-break: break-word !important;
   padding: 3px !important;
@@ -70,11 +70,11 @@ div[data-testid="stDataEditor"] td {
 /* Product Data table widths */
 div[data-testid="stDataEditor"] th:nth-child(1),
 div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 45% !important;   /* Product */
+  width: 38% !important;   /* Just enough for "Original Greek Yogurt" */
 }
 div[data-testid="stDataEditor"] th:nth-child(2),
 div[data-testid="stDataEditor"] td:nth-child(2) {
-  width: 10% !important;   /* On Hand */
+  width: 10% !important;   /* On Hand (small) */
 }
 div[data-testid="stDataEditor"] th:nth-child(3),
 div[data-testid="stDataEditor"] td:nth-child(3),
@@ -82,7 +82,7 @@ div[data-testid="stDataEditor"] th:nth-child(4),
 div[data-testid="stDataEditor"] td:nth-child(4),
 div[data-testid="stDataEditor"] th:nth-child(5),
 div[data-testid="stDataEditor"] td:nth-child(5) {
-  width: 15% !important;   /* Days */
+  width: 17% !important;   /* Days (equal width) */
 }
 
 /* Projection table widths (keep headers visible) */
