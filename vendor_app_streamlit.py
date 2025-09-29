@@ -49,20 +49,20 @@ div[data-testid="stDataEditor"] table {
   width: 100% !important;
 }
 
-/* Hide headers (column names row) */
+/* Hide column headers completely */
 div[data-testid="stDataEditor"] thead,
 div[data-testid="stDataFrame"] thead {
   display: none !important;
 }
 
-/* Product Data table widths (smaller than before) */
+/* Product Data table widths for MOBILE */
 div[data-testid="stDataEditor"] th:nth-child(1),
 div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 38% !important;   /* Product column */
+  width: 55% !important;   /* Product wide */
 }
 div[data-testid="stDataEditor"] th:nth-child(2),
 div[data-testid="stDataEditor"] td:nth-child(2) {
-  width: 10% !important;   /* On Hand */
+  width: 8% !important;    /* On Hand slim */
 }
 div[data-testid="stDataEditor"] th:nth-child(3),
 div[data-testid="stDataEditor"] td:nth-child(3),
@@ -70,17 +70,17 @@ div[data-testid="stDataEditor"] th:nth-child(4),
 div[data-testid="stDataEditor"] td:nth-child(4),
 div[data-testid="stDataEditor"] th:nth-child(5),
 div[data-testid="stDataEditor"] td:nth-child(5) {
-  width: 12% !important;   /* Day 1, Day 2, Day 3 */
+  width: 12% !important;   /* Days slim */
 }
 
 /* Projection table widths */
 div[data-testid="stDataFrame"] th:nth-child(1),
 div[data-testid="stDataFrame"] td:nth-child(1) {
-  width: 35% !important;
+  width: 45% !important;   /* Product wider */
 }
 div[data-testid="stDataFrame"] th:nth-child(n+2),
 div[data-testid="stDataFrame"] td:nth-child(n+2) {
-  width: 13% !important;
+  width: 11% !important;   /* Others smaller */
 }
 
 /* Invoice textarea */
@@ -233,7 +233,7 @@ if ss.vendor_data:
     # Keep "On Hand" fixed after Product
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
     df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
-    df.insert(1, "On Hand", 0)  # insert after Product
+    df.insert(1, "On Hand", 0)  # insert right after Product
 
     st.markdown("### 📋 Product Data (enter On Hand only)")
     edited = st.data_editor(
@@ -241,15 +241,14 @@ if ss.vendor_data:
         use_container_width=True,
         hide_index=True,
         height=table_height(len(df)),
-        column_order=["Product", "On Hand", "1 Day", "2 Days", "5 Days"],
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="small"),
+            "Product": st.column_config.Column(disabled=True, width="large"),
             "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="xx-small"),
             "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
             "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
             "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
         },
-        disabled=["Product", "1 Day", "2 Days", "5 Days"],
+        disabled=["Product", "1 Day", "2 Days", "5 Days"],  # lock those columns fully
     )
 
     st.divider()
