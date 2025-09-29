@@ -49,37 +49,28 @@ div[data-testid="stDataEditor"] table {
   width: 100% !important;
 }
 
-/* Hide 3-dot column menu */
-div[data-testid="stDataEditor"] div[role="button"],
-div[data-testid="stDataFrame"] div[role="button"] {
+/* Hide headers (column names row) */
+div[data-testid="stDataEditor"] thead,
+div[data-testid="stDataFrame"] thead {
   display: none !important;
 }
 
-/* Column alignment */
-div[data-testid="stDataFrame"] th,
-div[data-testid="stDataFrame"] td,
-div[data-testid="stDataEditor"] th,
-div[data-testid="stDataEditor"] td {
-  text-align: center !important;
-  vertical-align: middle !important;
-  font-size: 14px !important;
-  white-space: normal !important;
-  word-break: break-word !important;
-  padding: 3px !important;
-}
-
-/* Product Data table widths */
+/* Product Data table widths (smaller than before) */
 div[data-testid="stDataEditor"] th:nth-child(1),
 div[data-testid="stDataEditor"] td:nth-child(1) {
-  width: 55% !important;   /* Product wider */
+  width: 38% !important;   /* Product column */
 }
 div[data-testid="stDataEditor"] th:nth-child(2),
 div[data-testid="stDataEditor"] td:nth-child(2) {
-  width: 6% !important;    /* On Hand reduced */
+  width: 10% !important;   /* On Hand */
 }
-div[data-testid="stDataEditor"] th:nth-child(n+3),
-div[data-testid="stDataEditor"] td:nth-child(n+3) {
-  width: 13% !important;   /* Day columns */
+div[data-testid="stDataEditor"] th:nth-child(3),
+div[data-testid="stDataEditor"] td:nth-child(3),
+div[data-testid="stDataEditor"] th:nth-child(4),
+div[data-testid="stDataEditor"] td:nth-child(4),
+div[data-testid="stDataEditor"] th:nth-child(5),
+div[data-testid="stDataEditor"] td:nth-child(5) {
+  width: 12% !important;   /* Day 1, Day 2, Day 3 */
 }
 
 /* Projection table widths */
@@ -242,7 +233,7 @@ if ss.vendor_data:
     # Keep "On Hand" fixed after Product
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "2 Days", "5 Days"])
     df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
-    df.insert(1, "On Hand", 0)  # insert right after Product
+    df.insert(1, "On Hand", 0)  # insert after Product
 
     st.markdown("### 📋 Product Data (enter On Hand only)")
     edited = st.data_editor(
@@ -250,14 +241,15 @@ if ss.vendor_data:
         use_container_width=True,
         hide_index=True,
         height=table_height(len(df)),
+        column_order=["Product", "On Hand", "1 Day", "2 Days", "5 Days"],
         column_config={
-            "Product": st.column_config.Column(disabled=True, width="large"),
+            "Product": st.column_config.Column(disabled=True, width="small"),
             "On Hand": st.column_config.NumberColumn(format="%d", min_value=0, step=1, width="xx-small"),
             "1 Day": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
             "2 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
             "5 Days": st.column_config.NumberColumn(format="%d", disabled=True, width="x-small"),
         },
-        disabled=["Product", "1 Day", "2 Days", "5 Days"],  # lock those columns fully
+        disabled=["Product", "1 Day", "2 Days", "5 Days"],
     )
 
     st.divider()
