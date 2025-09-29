@@ -54,9 +54,7 @@ div[data-testid="stDataEditor"] thead tr {
   display: none !important;
 }
 
-/* Column alignment */
-div[data-testid="stDataFrame"] th,
-div[data-testid="stDataFrame"] td,
+/* Column alignment (Product Data table) */
 div[data-testid="stDataEditor"] th,
 div[data-testid="stDataEditor"] td {
   text-align: center !important;
@@ -89,10 +87,12 @@ div[data-testid="stDataEditor"] td:nth-child(5) {
 div[data-testid="stDataFrame"] th:nth-child(1),
 div[data-testid="stDataFrame"] td:nth-child(1) {
   width: 60% !important;   /* Product */
+  text-align: left !important;   /* Product left aligned */
 }
 div[data-testid="stDataFrame"] th:nth-child(2),
 div[data-testid="stDataFrame"] td:nth-child(2) {
   width: 40% !important;   /* Projection column */
+  text-align: left !important;   /* Projection values left aligned */
 }
 
 /* Invoice textarea */
