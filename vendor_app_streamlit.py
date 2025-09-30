@@ -34,19 +34,12 @@ st.markdown("""
 /* Hide headers for Product Data table only */
 div[data-testid="stDataEditor"] thead tr { display: none !important; }
 
-/* Column alignment */
-div[data-testid="stDataFrame"] td,
-div[data-testid="stDataEditor"] td {
-  font-size: 13px !important;
-  padding: 3px !important;
-}
-
-/* Product Data table widths */
-div[data-testid="stDataEditor"] td:nth-child(1) { width: 38% !important; }
-div[data-testid="stDataEditor"] td:nth-child(2) { width: 10% !important; }
+/* Product Data table widths (mobile friendly) */
+div[data-testid="stDataEditor"] td:nth-child(1) { width: 46% !important; }  /* Product */
+div[data-testid="stDataEditor"] td:nth-child(2) { width: 10% !important; }  /* On Hand */
 div[data-testid="stDataEditor"] td:nth-child(3),
 div[data-testid="stDataEditor"] td:nth-child(4),
-div[data-testid="stDataEditor"] td:nth-child(5) { width: 17% !important; }
+div[data-testid="stDataEditor"] td:nth-child(5) { width: 14% !important; }  /* Day columns */
 
 /* Projection table widths */
 div[data-testid="stDataFrame"] td:nth-child(1) { width: 60% !important; }
@@ -201,13 +194,17 @@ if ss.vendor_data:
     st.markdown("### 📊 Choose Projection")
 
     # Projection buttons in a single row
-    pc1, pc2, pc3 = st.columns(3)
+    pc1, pc2, pc3, pc4 = st.columns([1,1,1,1])
     with pc1: 
         if st.button("1 Day"): ss.projection = "1"
     with pc2: 
         if st.button("2 Days"): ss.projection = "2"
     with pc3: 
         if st.button("5 Days"): ss.projection = "5"
+    with pc4:
+        if ss.projection:  # only show after a projection is selected
+            quoted = urllib.parse.quote(build_invoice_text(vendor, branch, [["",0]]))
+            st.markdown(f"[📲 Send via WhatsApp]({'https://wa.me/?text=' + quoted})", unsafe_allow_html=True)
 
     if ss.projection:
         base_col = {"1": "1 Day", "2": "2 Days", "5": "5 Days"}[ss.projection]
@@ -236,8 +233,7 @@ if ss.vendor_data:
                 if st.button("💾 Save & Show Invoice"): ss.show_invoice = True
             with c2:
                 quoted = urllib.parse.quote(build_invoice_text(vendor, branch, show.values.tolist()))
-                wa_url = f"https://wa.me/?text={quoted}"
-                st.markdown(f"[📲 Send via WhatsApp]({wa_url})", unsafe_allow_html=True)
+                st.markdown(f"[📲 Send via WhatsApp]({'https://wa.me/?text=' + quoted})", unsafe_allow_html=True)
 
             if ss.get("show_invoice", False):
                 use = show[["Product", header]]
