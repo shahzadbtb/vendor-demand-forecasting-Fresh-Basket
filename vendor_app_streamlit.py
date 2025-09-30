@@ -34,8 +34,16 @@ st.markdown("""
 /* Hide headers for Product Data table only */
 div[data-testid="stDataEditor"] thead tr { display: none !important; }
 
-/* Product Data table widths (extra small for mobile) */
-div[data-testid="stDataEditor"] td:nth-child(1) { width: 36% !important; }  /* Product */
+/* Remove ALL scrollbars */
+div[data-testid="stDataFrame"], 
+div[data-testid="stDataEditor"],
+textarea {
+  overflow: hidden !important;
+  max-height: none !important;
+}
+
+/* Product Data table widths (extra small mobile friendly) */
+div[data-testid="stDataEditor"] td:nth-child(1) { width: 34% !important; }  /* Product */
 div[data-testid="stDataEditor"] td:nth-child(2) { width: 10% !important; }  /* On Hand */
 div[data-testid="stDataEditor"] td:nth-child(3),
 div[data-testid="stDataEditor"] td:nth-child(4),
@@ -48,7 +56,7 @@ div[data-testid="stDataFrame"] td:nth-child(2) {
     text-align: left !important;   /* align projection values left */
 }
 
-/* Invoice textarea */
+/* Invoice textarea (auto-expand, no scroll) */
 textarea {
   width: 100% !important;
   font-size: 18px !important;
@@ -56,6 +64,7 @@ textarea {
   line-height: 1.5 !important;
   padding: 10px !important;
   resize: none !important;
+  overflow: hidden !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -120,7 +129,7 @@ def copy_button(label: str, text_to_copy: str, key: str):
     components.html(html, height=50)
 
 def table_height(n_rows: int) -> int:
-    return min(1600, 50 + n_rows * 42)
+    return 60 + n_rows * 42  # expand fully, no scroll
 
 # ------------------------------
 # HEADER
@@ -244,7 +253,7 @@ if ss.vendor_data:
                 else:
                     invoice_text = build_invoice_text(vendor, branch, use.values.tolist())
                     n_lines = invoice_text.count("\n") + 1
-                    ta_height = min(1600, 40 * n_lines)
+                    ta_height = 40 * n_lines  # auto expand invoice
                     st.text_area("Invoice Preview", invoice_text, height=ta_height, key="invoice_edit")
 
                     quoted = urllib.parse.quote(invoice_text)
