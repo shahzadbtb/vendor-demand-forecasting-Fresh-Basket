@@ -34,14 +34,6 @@ st.markdown("""
 /* Hide headers for Product Data table only */
 div[data-testid="stDataEditor"] thead tr { display: none !important; }
 
-/* Remove ALL scrollbars */
-div[data-testid="stDataFrame"], 
-div[data-testid="stDataEditor"],
-textarea {
-  overflow: hidden !important;
-  max-height: none !important;
-}
-
 /* Product Data table widths (extra small mobile friendly) */
 div[data-testid="stDataEditor"] td:nth-child(1) { width: 34% !important; }  /* Product */
 div[data-testid="stDataEditor"] td:nth-child(2) { width: 10% !important; }  /* On Hand */
@@ -50,9 +42,9 @@ div[data-testid="stDataEditor"] td:nth-child(4),
 div[data-testid="stDataEditor"] td:nth-child(5) { width: 12% !important; }  /* Day1-5 */
 
 /* Projection table widths */
-div[data-testid="stDataFrame"] td:nth-child(1) { width: 60% !important; }
+div[data-testid="stDataFrame"] td:nth-child(1) { width: 55% !important; }  /* Product */
 div[data-testid="stDataFrame"] td:nth-child(2) { 
-    width: 40% !important; 
+    width: 45% !important; 
     text-align: left !important;   /* align projection values left */
 }
 
@@ -138,7 +130,7 @@ col1, col2 = st.columns([1, 6])
 with col1:
     logo_candidates = ["fresh_basket_logo.png", "fresh basket logo.jfif"]
     logo_path = next((p for p in logo_candidates if os.path.exists(p)), None)
-    if logo_path: st.image(logo_path, width=160)  # doubled logo size
+    if logo_path: st.image(logo_path, width=160)
 with col2:
     st.title("Vendors Demand Forecasting")
 st.caption("Powered by Fresh Basket • Mobile Friendly • Fast & Dynamic")
@@ -205,15 +197,14 @@ if ss.vendor_data:
     with pc3: 
         if st.button("5 Days"): ss.projection = "5"
 
-    # WhatsApp button always visible once projection chosen
+    # New WhatsApp button (near projection buttons)
     with pc4:
         if ss.projection and ss.proj_df is not None:
-            use = ss.proj_df[["Product", {"1":"1 Day","2":"2 Days","5":"5 Days"}[ss.projection]]]
-            use = use[use.iloc[:,1] > 0]
+            show = ss.proj_df[["Product", ss.proj_df.columns[-1]]]
+            use = show[show.iloc[:,1] > 0]
             invoice_text = build_invoice_text(vendor, branch, use.values.tolist())
             quoted = urllib.parse.quote(invoice_text)
-            wa_url = f"https://wa.me/?text={quoted}"
-            st.markdown(f"[📲 Send via WhatsApp]({wa_url})", unsafe_allow_html=True)
+            st.markdown(f"[📲 Send via WhatsApp](https://wa.me/?text={quoted})", unsafe_allow_html=True)
 
     if ss.projection:
         base_col = {"1": "1 Day", "2": "2 Days", "5": "5 Days"}[ss.projection]
@@ -243,8 +234,7 @@ if ss.vendor_data:
                 items = show.values.tolist()
                 invoice_text = build_invoice_text(vendor, branch, items)
                 quoted = urllib.parse.quote(invoice_text)
-                wa_url = f"https://wa.me/?text={quoted}"
-                st.markdown(f"[📲 Send via WhatsApp]({wa_url})", unsafe_allow_html=True)
+                st.markdown(f"[📲 Send via WhatsApp](https://wa.me/?text={quoted})", unsafe_allow_html=True)
 
             if ss.get("show_invoice", False):
                 use = show[["Product", header]]
@@ -253,7 +243,7 @@ if ss.vendor_data:
                 else:
                     invoice_text = build_invoice_text(vendor, branch, use.values.tolist())
                     n_lines = invoice_text.count("\n") + 1
-                    ta_height = 40 * n_lines  # auto expand invoice
+                    ta_height = 40 * n_lines
                     st.text_area("Invoice Preview", invoice_text, height=ta_height, key="invoice_edit")
 
                     quoted = urllib.parse.quote(invoice_text)
