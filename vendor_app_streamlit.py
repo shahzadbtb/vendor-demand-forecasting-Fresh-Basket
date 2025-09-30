@@ -26,7 +26,7 @@ ss.setdefault("show_upload", False)
 ss.setdefault("invoice_text", "")
 
 # ------------------------------
-# GLOBAL CSS (extra small widths)
+# GLOBAL CSS (fit all 5 columns)
 # ------------------------------
 st.markdown("""
 <style>
@@ -35,12 +35,12 @@ st.markdown("""
 /* Hide headers for Product Data table */
 div[data-testid="stDataEditor"] thead tr { display: none !important; }
 
-/* Product Data table widths (mobile friendly & compact) */
-div[data-testid="stDataEditor"] td:nth-child(1) { width: 20% !important; }  /* Product */
-div[data-testid="stDataEditor"] td:nth-child(2) { width: 16% !important; }  /* On Hand */
+/* Product Data table widths (mobile-friendly, all visible) */
+div[data-testid="stDataEditor"] td:nth-child(1) { width: 12% !important; }  /* Product */
+div[data-testid="stDataEditor"] td:nth-child(2) { width: 18% !important; }  /* On Hand */
 div[data-testid="stDataEditor"] td:nth-child(3),
 div[data-testid="stDataEditor"] td:nth-child(4),
-div[data-testid="stDataEditor"] td:nth-child(5) { width: 16% !important; }  /* Days */
+div[data-testid="stDataEditor"] td:nth-child(5) { width: 23% !important; }  /* Day columns */
 
 /* Projection table widths */
 div[data-testid="stDataFrame"] td:nth-child(1) { width: 60% !important; }
@@ -203,15 +203,6 @@ if ss.vendor_data:
         if st.button("2 Days"): ss.projection = "2"
     with pc3: 
         if st.button("5 Days"): ss.projection = "5"
-    with pc4:
-        # FIX: now linked to projection table instead of dummy
-        if ss.proj_df is not None:
-            header = ss.proj_df.columns[-1]
-            use = ss.proj_df[["Product", header]]
-            use = use[use[header] > 0]
-            if not use.empty:
-                text = build_invoice_text(vendor, branch, use.values.tolist())
-                st.markdown(f"[📲 Send via WhatsApp]({whatsapp_url(text)})", unsafe_allow_html=True)
 
     if ss.projection:
         base_col = {"1": "1 Day", "2": "2 Days", "5": "5 Days"}[ss.projection]
@@ -227,11 +218,16 @@ if ss.vendor_data:
         st.success(f"✅ Showing {header}")
         st.dataframe(show, use_container_width=True, height=table_height(len(show)), hide_index=True)
 
+        # WhatsApp button now always after ANY projection
+        use = show[show[header] > 0]
+        if not use.empty:
+            text = build_invoice_text(vendor, branch, use.values.tolist())
+            st.markdown(f"[📲 Send via WhatsApp]({whatsapp_url(text)})", unsafe_allow_html=True)
+
         st.markdown("### 🧾 Invoice")
         c1, c2 = st.columns([1,1])
         with c1:
             if st.button("💾 Save & Show Invoice"):
-                use = show[show[header] > 0]
                 if not use.empty:
                     ss.invoice_text = build_invoice_text(vendor, branch, use.values.tolist())
         with c2:
