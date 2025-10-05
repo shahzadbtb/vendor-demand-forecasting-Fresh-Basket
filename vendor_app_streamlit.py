@@ -114,6 +114,7 @@ def build_invoice_text(vendor: str, branch: str, items: list[list]) -> str:
     return "\n".join(lines)
 
 
+# ---- FIXED FUNCTION (no f-string syntax error) ----
 def copy_button(label: str, text_to_copy: str, key: str):
     safe = (text_to_copy.replace("&", "&amp;")
                         .replace("<", "&lt;")
@@ -128,16 +129,19 @@ def copy_button(label: str, text_to_copy: str, key: str):
     <script>
     const btn=document.getElementById("btn-{key}");
     const txt=document.getElementById("txt-{key}");
-    btn.onclick=async ()=>{
-      try{
+    btn.onclick=async () => {{
+      try {{
         await navigator.clipboard.writeText(txt.value);
         const old=btn.innerText; btn.innerText="Copied!";
-        setTimeout(()=>btn.innerText=old,1200);
-      }catch(e){ alert("Copy failed."); }
-    };
+        setTimeout(() => btn.innerText=old,1200);
+      }} catch(e) {{
+        alert("Copy failed.");
+      }}
+    }};
     </script>
     """
     components.html(html, height=50)
+# ---------------------------------------------------
 
 
 def table_height(n_rows:int)->int:
@@ -216,7 +220,6 @@ if ss.vendor_data:
     ss.current_vendor = vendor
     rows = ss.vendor_data[vendor]
 
-    # Updated headings
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "3 Day", "5 Day"])
     df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
     df.insert(1, "On Hand", 0)
@@ -266,7 +269,6 @@ if ss.vendor_data:
         tmp[header] = tmp.apply(lambda r: max(0, int(r[base_col]) - int(r["On Hand"])), axis=1)
         ss.proj_df = tmp
 
-        # Keep rows with product even if all zeros
         show = pd.DataFrame({
             "Product": tmp["Product"],
             header: tmp[header].astype(int)
@@ -274,7 +276,6 @@ if ss.vendor_data:
         show = show[show["Product"].notna() & (show["Product"].str.strip() != "")]
         ss.show_df = show
 
-        # WhatsApp text includes all product rows (even zeros)
         items = show[["Product", header]].values.tolist()
         ss.invoice_text = build_invoice_text(vendor, branch, items)
 
