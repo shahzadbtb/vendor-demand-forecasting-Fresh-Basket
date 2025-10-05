@@ -20,7 +20,7 @@ st.set_page_config(
 ss = st.session_state
 ss.setdefault("vendor_data", {})
 ss.setdefault("current_vendor", None)
-ss.setdefault("projection", None)
+ss.setdefault("projection", None)          # "1" | "3" | "5"
 ss.setdefault("proj_df", None)
 ss.setdefault("show_df", None)
 ss.setdefault("invoice_text", "")
@@ -28,7 +28,7 @@ ss.setdefault("show_upload", False)
 ss.setdefault("show_invoice", False)
 
 # ------------------------------
-# GLOBAL CSS + JS (single-click edit)
+# GLOBAL CSS
 # ------------------------------
 st.markdown("""
 <style>
@@ -68,25 +68,6 @@ textarea{
   overflow:hidden !important;
 }
 </style>
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const observer = new MutationObserver(() => {
-        const cells = document.querySelectorAll('div[data-testid="stDataEditor"] td');
-        cells.forEach(td => {
-            // Already processed?
-            if (td.dataset.clickBound) return;
-            td.dataset.clickBound = true;
-            td.addEventListener("click", e => {
-                // Trigger double click programmatically for single click edit
-                const evt = new MouseEvent("dblclick", {bubbles:true});
-                td.dispatchEvent(evt);
-            });
-        });
-    });
-    observer.observe(document.body, { childList:true, subtree:true });
-});
-</script>
 """, unsafe_allow_html=True)
 
 # ------------------------------
@@ -102,11 +83,13 @@ def parse_excel(uploaded_file) -> dict:
             name = "" if pd.isna(r.iloc[0]) else str(r.iloc[0]).strip()
             if not name:
                 continue
+
             def num(v):
                 try:
                     return int(float(v))
                 except Exception:
                     return 0
+
             rows.append([name, num(r.iloc[1]), num(r.iloc[2]), num(r.iloc[3])])
         if rows:
             data[sheet] = rows
@@ -118,7 +101,8 @@ def build_invoice_text(vendor: str, branch: str, items: list[list]) -> str:
         "*Vendor Demand Invoice*",
         f"*Vendor:* {vendor}",
         f"*Branch:* {branch}",
-        f"*Date:* {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}","",
+        f"*Date:* {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        "",
         "*ITEMS:*",
     ]
     total = 0
@@ -130,8 +114,11 @@ def build_invoice_text(vendor: str, branch: str, items: list[list]) -> str:
     return "\n".join(lines)
 
 
+# ---- FIXED FUNCTION (no f-string syntax error) ----
 def copy_button(label: str, text_to_copy: str, key: str):
-    safe = (text_to_copy.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"))
+    safe = (text_to_copy.replace("&", "&amp;")
+                        .replace("<", "&lt;")
+                        .replace(">", "&gt;"))
     html = f"""
     <div>
       <button id="btn-{key}" style="
@@ -154,6 +141,7 @@ def copy_button(label: str, text_to_copy: str, key: str):
     </script>
     """
     components.html(html, height=50)
+# ---------------------------------------------------
 
 
 def table_height(n_rows:int)->int:
@@ -167,9 +155,9 @@ def whatsapp_url_from_items(items:list[list], vendor:str, branch:str)->str:
 # ------------------------------
 # HEADER
 # ------------------------------
-col1, col2 = st.columns([1,6])
+col1, col2 = st.columns([1, 6])
 with col1:
-    logo_candidates = ["fresh_basket_logo.png","fresh basket logo.jfif"]
+    logo_candidates = ["fresh_basket_logo.png", "fresh basket logo.jfif"]
     logo_path = next((p for p in logo_candidates if os.path.exists(p)), None)
     if logo_path:
         st.image(logo_path, width=160)
@@ -181,7 +169,7 @@ st.caption("Powered by Fresh Basket • Mobile Friendly • Fast & Dynamic")
 # UPLOAD
 # ------------------------------
 if not ss.vendor_data:
-    uploaded = st.file_uploader("📑 Upload Excel File", type=["xlsx","xls"], key="first_upload")
+    uploaded = st.file_uploader("📑 Upload Excel File", type=["xlsx", "xls"], key="first_upload")
     if uploaded:
         ss.vendor_data = parse_excel(uploaded)
         if ss.vendor_data:
@@ -190,14 +178,15 @@ if not ss.vendor_data:
         else:
             st.error("No valid rows found. Please check your Excel file.")
 else:
-    up1, up2 = st.columns([1,1])
+    up1, up2 = st.columns([1, 1])
     with up1:
         st.success(f"✅ Current dataset loaded: **{len(ss.vendor_data)} vendors**")
     with up2:
         if st.button("📤 Upload New Excel File"):
             ss.show_upload = True
+
     if ss.show_upload:
-        new_file = st.file_uploader("Upload New Excel File", type=["xlsx","xls"], key="replace_upload")
+        new_file = st.file_uploader("Upload New Excel File", type=["xlsx", "xls"], key="replace_upload")
         if new_file:
             ss.vendor_data = parse_excel(new_file)
             ss.current_vendor = None
@@ -217,20 +206,29 @@ else:
 # ------------------------------
 if ss.vendor_data:
     vendors = list(ss.vendor_data.keys())
-    vendor = st.selectbox("🔍 Select Vendor", vendors,
-        index=0 if ss.current_vendor is None else vendors.index(ss.current_vendor))
-    branch = st.selectbox("🏬 Select Branch",
-        ["Shahbaz","Clifton","Badar","DHA Ecom","BHD Ecom","BHD","Head Office"])
+    vendor = st.selectbox(
+        "🔍 Select Vendor",
+        vendors,
+        index=0 if ss.current_vendor is None else vendors.index(ss.current_vendor),
+    )
+
+    branch = st.selectbox(
+        "🏬 Select Branch",
+        ["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"]
+    )
 
     ss.current_vendor = vendor
     rows = ss.vendor_data[vendor]
-    df = pd.DataFrame(rows, columns=["Product","1 Day","3 Day","5 Day"])
-    df = df[df["Product"].notna() & (df["Product"].str.strip()!="")]
-    df.insert(1,"On Hand",0)
+
+    df = pd.DataFrame(rows, columns=["Product", "1 Day", "3 Day", "5 Day"])
+    df = df[df["Product"].notna() & (df["Product"].str.strip() != "")]
+    df.insert(1, "On Hand", 0)
 
     st.markdown("### 📋 Product Data (enter On Hand only)")
     edited = st.data_editor(
-        df, use_container_width=True, hide_index=True,
+        df,
+        use_container_width=True,
+        hide_index=True,
         height=table_height(len(df)),
         column_config={
             "Product": st.column_config.Column(disabled=True),
@@ -239,52 +237,78 @@ if ss.vendor_data:
             "3 Day": st.column_config.NumberColumn(format="%d", disabled=True),
             "5 Day": st.column_config.NumberColumn(format="%d", disabled=True),
         },
-        disabled=["Product","1 Day","3 Day","5 Day"],
+        disabled=["Product", "1 Day", "3 Day", "5 Day"],
     )
 
-    st.divider(); st.markdown("### 📊 Choose Projection")
-    b1,b2,b3=st.columns(3)
+    st.divider()
+    st.markdown("### 📊 Choose Projection")
+
+    b1, b2, b3 = st.columns(3)
     with b1:
-        if st.button("1 Day"): ss.projection="1"; ss.show_invoice=False
+        if st.button("1 Day"):
+            ss.projection = "1"; ss.show_invoice = False
     with b2:
-        if st.button("3 Day"): ss.projection="3"; ss.show_invoice=False
+        if st.button("3 Day"):
+            ss.projection = "3"; ss.show_invoice = False
     with b3:
-        if st.button("5 Day"): ss.projection="5"; ss.show_invoice=False
+        if st.button("5 Day"):
+            ss.projection = "5"; ss.show_invoice = False
 
     if ss.projection:
-        base_col={"1":"1 Day","3":"3 Day","5":"5 Day"}[ss.projection]
-        header={"1":"1 Day Projection","3":"3 Day Projection","5":"5 Day Projection"}[ss.projection]
-        tmp=edited.fillna(0).copy()
-        for c in ["1 Day","3 Day","5 Day","On Hand"]:
-            tmp[c]=tmp[c].apply(lambda x:int(x) if pd.notna(x) else 0)
-        tmp[header]=tmp.apply(lambda r:max(0,int(r[base_col])-int(r["On Hand"])),axis=1)
-        ss.proj_df=tmp
-        show=pd.DataFrame({"Product":tmp["Product"],header:tmp[header].astype(int)})
-        show=show[show["Product"].notna() & (show["Product"].str.strip()!="")]
-        ss.show_df=show
-        items=show[["Product",header]].values.tolist()
-        ss.invoice_text=build_invoice_text(vendor,branch,items)
+        base_col = {"1": "1 Day", "3": "3 Day", "5": "5 Day"}[ss.projection]
+        header = {
+            "1": "1 Day Projection",
+            "3": "3 Day Projection",
+            "5": "5 Day Projection"
+        }[ss.projection]
+
+        tmp = edited.fillna(0).copy()
+        for c in ["1 Day", "3 Day", "5 Day", "On Hand"]:
+            tmp[c] = tmp[c].apply(lambda x: int(x) if pd.notna(x) else 0)
+
+        tmp[header] = tmp.apply(lambda r: max(0, int(r[base_col]) - int(r["On Hand"])), axis=1)
+        ss.proj_df = tmp
+
+        show = pd.DataFrame({
+            "Product": tmp["Product"],
+            header: tmp[header].astype(int)
+        })
+        show = show[show["Product"].notna() & (show["Product"].str.strip() != "")]
+        ss.show_df = show
+
+        items = show[["Product", header]].values.tolist()
+        ss.invoice_text = build_invoice_text(vendor, branch, items)
+
         st.success(f"✅ Showing {header}")
 
-        wa_row=st.columns([3,1])
+        wa_row = st.columns([3, 1])
         with wa_row[1]:
-            wa_url=f"https://api.whatsapp.com/send?text={urllib.parse.quote(ss.invoice_text)}"
-            st.markdown(f"[📲 Send via WhatsApp]({wa_url})",unsafe_allow_html=True)
-        st.dataframe(ss.show_df,use_container_width=True,
-                     height=table_height(len(ss.show_df)),hide_index=True)
+            wa_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(ss.invoice_text)}"
+            st.markdown(f"[📲 Send via WhatsApp]({wa_url})", unsafe_allow_html=True)
+
+        st.dataframe(
+            ss.show_df,
+            use_container_width=True,
+            height=table_height(len(ss.show_df)),
+            hide_index=True
+        )
+
         st.markdown("### 🧾 Invoice")
-        t1,t2=st.columns([1,1])
-        with t1:
-            if st.button("💾 Save & Show Invoice"): ss.show_invoice=True
-        with t2:
-            wa_url=f"https://api.whatsapp.com/send?text={urllib.parse.quote(ss.invoice_text)}"
-            st.markdown(f"[📲 Send via WhatsApp]({wa_url})",unsafe_allow_html=True)
+        top_left, top_right = st.columns([1, 1])
+        with top_left:
+            if st.button("💾 Save & Show Invoice"):
+                ss.show_invoice = True
+        with top_right:
+            wa_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(ss.invoice_text)}"
+            st.markdown(f"[📲 Send via WhatsApp]({wa_url})", unsafe_allow_html=True)
+
         if ss.show_invoice:
-            n_lines=ss.invoice_text.count("\\n")+1
-            st.text_area("Invoice Preview",ss.invoice_text,height=40*n_lines,key="invoice_edit")
-            b1,b2=st.columns(2)
-            with b1:
-                wa_url=f"https://api.whatsapp.com/send?text={urllib.parse.quote(ss.invoice_text)}"
-                st.markdown(f"[📲 Send via WhatsApp]({wa_url})",unsafe_allow_html=True)
-            with b2:
-                copy_button("📋 Copy Invoice",ss.invoice_text,key="inv1")
+            n_lines = ss.invoice_text.count("\n") + 1
+            st.text_area("Invoice Preview", ss.invoice_text, height=40 * n_lines, key="invoice_edit")
+
+            bottom_left, bottom_right = st.columns(2)
+            with bottom_left:
+                wa_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(ss.invoice_text)}"
+                st.markdown(f"[📲 Send via WhatsApp]({wa_url})", unsafe_allow_html=True)
+            with bottom_right:
+                copy_button("📋 Copy Invoice", ss.invoice_text, key="inv1")
