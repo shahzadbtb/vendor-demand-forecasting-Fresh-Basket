@@ -17,29 +17,29 @@ ss.setdefault("invoice_text", "")
 ss.setdefault("show_upload", False)
 
 # -------------------------------------------------
-# CSS + JS (Mobile Optimized)
+# CSS + JS
 # -------------------------------------------------
 st.markdown("""
 <style>
-.block-container { max-width: 800px; padding-top: .2rem; }
-h1,h2,h3 { text-align:center; margin-bottom:.3rem; }
+.block-container { max-width: 800px; padding-top: .1rem; }
+h1,h2,h3 { text-align:center; margin-bottom:.2rem; }
 .mobile-table { width:100%; border-collapse:collapse; margin-top:10px; }
 .mobile-table th, .mobile-table td {
   border:1px solid #ddd; text-align:center; padding:6px;
   font-size:15px;
 }
 .mobile-table input {
-  font-size:16px; width:85%; text-align:center; border:1px solid #aaa;
-  border-radius:6px; padding:4px; background:#fafafa;
+  font-size:15px; width:60px; text-align:center; border:1px solid #aaa;
+  border-radius:6px; padding:3px; background:#fafafa;
 }
 .stButton>button {
   background:#6c5ce7 !important; color:white !important;
   border-radius:8px !important; padding:6px 12px !important;
   font-weight:600 !important; font-size:14px !important;
 }
-.proj-buttons { text-align:center; margin-bottom:4px; }
+.proj-buttons { text-align:center; margin-bottom:6px; margin-top:2px; }
 .proj-buttons button {
-  margin:0 4px; padding:5px 12px; border:none; border-radius:6px;
+  margin:0 5px; padding:5px 12px; border:none; border-radius:6px;
   background:#6c5ce7; color:white; font-weight:600; font-size:14px;
   cursor:pointer;
 }
@@ -69,7 +69,7 @@ document.addEventListener("input", e => {
 # -------------------------------------------------
 @st.cache_data
 def parse_excel(uploaded_file) -> dict:
-    """Parse vendor Excel file efficiently"""
+    """Parse Excel into dict of sheets with product rows"""
     x = pd.ExcelFile(uploaded_file)
     data = {}
     for sheet in x.sheet_names:
@@ -87,9 +87,7 @@ def parse_excel(uploaded_file) -> dict:
             data[sheet] = rows
     return data
 
-
 def build_invoice_text(vendor, branch, items, period):
-    """Build formatted WhatsApp text"""
     lines = [
         f"*Vendor Demand ({period} Projection)*",
         f"*Vendor:* {vendor}",
@@ -105,15 +103,13 @@ def build_invoice_text(vendor, branch, items, period):
     lines += ["", f"*TOTAL ITEMS:* {len(items)}", f"*TOTAL QTY:* {total}"]
     return "\n".join(lines)
 
-
 def redirect_to_whatsapp(text):
-    """Inject JavaScript redirect for WhatsApp"""
     wa_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(text)}"
     js = f"<script>window.open('{wa_url}', '_blank');</script>"
     components.html(js, height=0)
 
 # -------------------------------------------------
-# HEADER (Compact)
+# HEADER
 # -------------------------------------------------
 col1, col2 = st.columns([1, 6])
 with col1:
@@ -122,16 +118,18 @@ with col1:
     if logo_path:
         st.image(logo_path, width=90)
 with col2:
-    st.markdown("<h2>Vendors Demand</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='margin-top:-5px;'>Vendors Demand</h2>", unsafe_allow_html=True)
 
-# Projection buttons directly below title
-st.markdown("""
-<div class="proj-buttons">
-  <button onclick="window.parent.postMessage('1D','*')">1D</button>
-  <button onclick="window.parent.postMessage('3D','*')">3D</button>
-  <button onclick="window.parent.postMessage('5D','*')">5D</button>
-</div>
-""", unsafe_allow_html=True)
+# -------------------------------------------------
+# PROJECTION BUTTONS (Top)
+# -------------------------------------------------
+c1, c2, c3 = st.columns(3)
+with c1:
+    btn_1d = st.button("1D")
+with c2:
+    btn_3d = st.button("3D")
+with c3:
+    btn_5d = st.button("5D")
 
 # -------------------------------------------------
 # UPLOAD
@@ -168,33 +166,20 @@ if ss.vendor_data:
         ["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"])
     ss.current_vendor = vendor
     rows = ss.vendor_data[vendor]
-
     df = pd.DataFrame(rows, columns=["Product", "1 Day", "3 Day", "5 Day"])
     df.insert(1, "On Hand", 0)
 
-    # --- JS listener for buttons ---
-    components.html("""
-    <script>
-    window.addEventListener('message', (event) => {
-        const label = event.data;
-        if(['1D','3D','5D'].includes(label)) {
-            const el = window.parent.document.querySelector('[data-testid="stFormSubmitButton"]');
-        }
-    });
-    </script>
-    """, height=0)
-
-    # --- Table ---
+    # --- Build Table ---
     html = """
     <table class="mobile-table">
-    <tr><th>Product</th><th>On Hand</th><th>1D Need</th><th>3D Need</th><th>5D Need</th></tr>
+    <tr><th>Product</th><th>On Hand</th><th>1 Day</th><th>3 Day</th><th>5 Day</th></tr>
     """
     for i, r in df.iterrows():
         html += f"""
         <tr>
           <td>{r['Product']}</td>
           <td><input class='onhand-input' data-idx='{i}' type='number'
-                inputmode='numeric' pattern='[0-9]*'
+                inputmode='numeric' maxlength='5'
                 data-day1='{r['1 Day']}' data-day3='{r['3 Day']}' data-day5='{r['5 Day']}'></td>
           <td id='p1-{i}'>{r['1 Day']}</td>
           <td id='p3-{i}'>{r['3 Day']}</td>
@@ -202,15 +187,16 @@ if ss.vendor_data:
         </tr>
         """
     html += "</table>"
-    components.html(html, height=min(700, 100 + len(df) * 45), scrolling=True)
+    components.html(html, height=min(1500, 100 + len(df)*40), scrolling=False)
 
-    # --- Projection Button Logic (Python Side) ---
-    b1, b2, b3 = st.columns(3)
-    for col, label in zip([b1, b2, b3], ["1D", "3D", "5D"]):
-        with col:
-            if st.button(label):
-                day_map = {"1D": "1 Day", "3D": "3 Day", "5D": "5 Day"}
-                day_col = day_map[label]
-                items = [[r["Product"], max(0, int(r[day_col]) - 0)] for _, r in df.iterrows()]
-                ss.invoice_text = build_invoice_text(vendor, branch, items, label)
-                redirect_to_whatsapp(ss.invoice_text)
+    # --- Button Logic ---
+    def generate_and_send(period_label):
+        day_map = {"1D": "1 Day", "3D": "3 Day", "5D": "5 Day"}
+        day_col = day_map[period_label]
+        items = [[r["Product"], max(0, int(r[day_col]) - 0)] for _, r in df.iterrows()]
+        ss.invoice_text = build_invoice_text(vendor, branch, items, period_label)
+        redirect_to_whatsapp(ss.invoice_text)
+
+    if btn_1d: generate_and_send("1D")
+    if btn_3d: generate_and_send("3D")
+    if btn_5d: generate_and_send("5D")
