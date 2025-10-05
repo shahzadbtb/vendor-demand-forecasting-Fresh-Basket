@@ -15,29 +15,30 @@ ss.setdefault("vendor_data", {})
 ss.setdefault("current_vendor", None)
 
 # -------------------------------------------------
-# CSS
+# CSS & JS
 # -------------------------------------------------
 st.markdown("""
 <style>
-.block-container { max-width:800px; padding-top:.3rem; }
-h1 { text-align:center; margin-bottom:.2rem; font-size:1.8rem; font-weight:700; }
-h3 { text-align:center; margin-top:.5rem; font-size:1rem; }
-.stButton>button {
-  background:#6c5ce7 !important;
-  color:white !important;
-  border-radius:8px !important;
-  padding:6px 14px !important;
-  font-size:14px !important;
-  font-weight:600 !important;
-  margin:2px !important;
+.block-container { max-width:800px; padding-top:.2rem; }
+h1 { text-align:center; margin-bottom:.3rem; font-size:1.6rem; font-weight:700; }
+
+.button-row {
+  display:flex; justify-content:center; gap:8px; margin-bottom:10px;
 }
-.mobile-table { width:100%; border-collapse:collapse; margin-top:.3rem; }
+.button-row button {
+  background:#6c5ce7; color:white; border:none;
+  border-radius:6px; padding:6px 12px;
+  font-size:13px; font-weight:600; cursor:pointer;
+}
+.button-row button:hover { background:#5548d9; }
+
+.mobile-table { width:100%; border-collapse:collapse; }
 .mobile-table th, .mobile-table td {
   border:1px solid #ddd; text-align:center; padding:6px;
   font-size:15px;
 }
 .mobile-table input {
-  font-size:15px; width:60px; text-align:center;
+  font-size:15px; width:55px; text-align:center;
   border:1px solid #aaa; border-radius:4px; padding:2px;
 }
 </style>
@@ -59,7 +60,7 @@ document.addEventListener("input", e => {
 """, unsafe_allow_html=True)
 
 # -------------------------------------------------
-# HELPER FUNCTIONS
+# HELPERS
 # -------------------------------------------------
 @st.cache_data
 def parse_excel(uploaded_file):
@@ -73,20 +74,19 @@ def parse_excel(uploaded_file):
             if not name:
                 continue
             def num(v):
-                try:
-                    return int(float(v))
-                except:
-                    return 0
+                try: return int(float(v))
+                except: return 0
             rows.append([name, num(r.iloc[1]), num(r.iloc[2]), num(r.iloc[3])])
         if rows:
             data[sheet] = rows
     return data
 
-def build_invoice_text(vendor, branch, items):
+def build_invoice_text(vendor, branch, items, day_label):
     lines = [
         "*Vendor Demand Invoice*",
         f"*Vendor:* {vendor}",
         f"*Branch:* {branch}",
+        f"*Projection:* {day_label}",
         f"*Date:* {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         "",
         "*ITEMS:*"
@@ -109,14 +109,18 @@ def open_whatsapp(invoice_text):
 # -------------------------------------------------
 st.markdown("<h1>Vendors Demand</h1>", unsafe_allow_html=True)
 
-# Inline 1D, 3D, 5D buttons
-colA, colB, colC = st.columns(3)
-with colA:
-    one_day = st.button("1D")
-with colB:
-    three_day = st.button("3D")
-with colC:
-    five_day = st.button("5D")
+# Small horizontal button row
+st.markdown("""
+<div class="button-row">
+  <button onclick="window.location.href='?projection=1'">1D</button>
+  <button onclick="window.location.href='?projection=3'">3D</button>
+  <button onclick="window.location.href='?projection=5'">5D</button>
+</div>
+""", unsafe_allow_html=True)
+
+# Read which projection was clicked (if any)
+query_params = st.query_params
+projection_clicked = query_params.get("projection", [None])[0]
 
 # -------------------------------------------------
 # UPLOAD
@@ -137,11 +141,11 @@ else:
 if ss.vendor_data:
     vendors = list(ss.vendor_data.keys())
     vendor = st.selectbox("🔍 Select Vendor", vendors)
-    branch = st.selectbox("🏬 Select Branch", ["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"])
+    branch = st.selectbox("🏬 Select Branch", ["Shahbaz","Clifton","Badar","DHA Ecom","BHD Ecom","BHD","Head Office"])
     rows = ss.vendor_data[vendor]
 
-    df = pd.DataFrame(rows, columns=["Product", "1 Day", "3 Day", "5 Day"])
-    df.insert(1, "On Hand", 0)
+    df = pd.DataFrame(rows, columns=["Product","1 Day","3 Day","5 Day"])
+    df.insert(1,"On Hand",0)
 
     html = """
     <table class="mobile-table">
@@ -160,19 +164,21 @@ if ss.vendor_data:
         </tr>
         """
     html += "</table>"
-    components.html(html, height=min(800, 100 + len(df) * 40), scrolling=False)
+    components.html(html, height=min(800, 100 + len(df)*38), scrolling=False)
 
     # -------------------------------------------------
-    # PROJECTION BUTTON ACTIONS
+    # PROJECTION LOGIC
     # -------------------------------------------------
-    def handle_projection(days):
-        items = df[["Product", f"{days} Day"]].values.tolist()
-        text = build_invoice_text(vendor, branch, items)
-        open_whatsapp(text)
-
-    if one_day:
-        handle_projection("1")
-    elif three_day:
-        handle_projection("3")
-    elif five_day:
-        handle_projection("5")
+    if projection_clicked in ["1","3","5"]:
+        day_label = f"{projection_clicked} Day"
+        items = []
+        for _, row in df.iterrows():
+            name = row["Product"]
+            onhand = row["On Hand"]
+            demand = row[f"{projection_clicked} Day"]
+            qty = max(0, demand - onhand)
+            if qty > 0:
+                items.append((name, qty))
+        if items:
+            invoice_text = build_invoice_text(vendor, branch, items, day_label)
+            open_whatsapp(invoice_text)
