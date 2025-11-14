@@ -22,14 +22,14 @@ h1#vendors-demand-title{
   text-align:center; margin:4px 0 6px 0; font-size:1.36rem; font-weight:800;
 }
 
-/* projection buttons directly under the title */
+/* projection buttons at bottom - prominent and separated */
 .action-row{
-  display:flex; justify-content:center; gap:15px; margin: 6px 0 10px;
+  display:flex; justify-content:center; gap:25px; margin: 20px 0 10px;
 }
 .action-row button{
   background:#6c5ce7; color:#fff; border:none; border-radius:8px;
-  padding:8px 20px; font-size:16px; font-weight:700; cursor:pointer;
-  min-width: 60px;
+  padding:12px 30px; font-size:18px; font-weight:700; cursor:pointer;
+  min-width: 80px;
 }
 .action-row button:hover{ background:#5548d9; }
 .action-row button:active{ transform:translateY(1px); }
@@ -43,7 +43,7 @@ h1#vendors-demand-title{
 .mobile-table colgroup col:nth-child(4){ width:8.5%; }/* 3 Day */
 .mobile-table colgroup col:nth-child(5){ width:8%; }  /* 5 Day */
 
-/* On-Hand input - remove spinner buttons and improve navigation */
+/* On-Hand input - remove spinner buttons and default value */
 .mobile-table input{
   width:40px; max-width:40px; font-size:15px; text-align:center;
   border:1px solid #aaa; border-radius:4px; padding:2px; background:#fafafa;
@@ -55,8 +55,16 @@ h1#vendors-demand-title{
   -webkit-appearance: none;
   margin: 0;
 }
+
 .mobile-table input[type=number] {
   -moz-appearance: textfield;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Remove default value styling */
+.mobile-table input:placeholder-shown {
+  color: #999;
 }
 </style>
 
@@ -88,28 +96,39 @@ function liveUpdate(e){
 function handleKeyNavigation(e) {
   if(!e.target.classList.contains("onhand-input")) return;
   
-  var currentInput = e.target;
-  var currentIndex = parseInt(currentInput.getAttribute("data-idx"));
-  var allInputs = document.querySelectorAll('.onhand-input');
-  var totalInputs = allInputs.length;
-  
   if (e.key === 'Enter' || e.key === 'ArrowDown') {
     e.preventDefault();
+    var currentInput = e.target;
+    var currentIndex = parseInt(currentInput.getAttribute("data-idx"));
+    var allInputs = document.querySelectorAll('.onhand-input');
+    var totalInputs = allInputs.length;
+    
     var nextIndex = (currentIndex + 1) % totalInputs;
     allInputs[nextIndex].focus();
     allInputs[nextIndex].select();
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
+    var currentInput = e.target;
+    var currentIndex = parseInt(currentInput.getAttribute("data-idx"));
+    var allInputs = document.querySelectorAll('.onhand-input');
+    var totalInputs = allInputs.length;
+    
     var prevIndex = (currentIndex - 1 + totalInputs) % totalInputs;
     allInputs[prevIndex].focus();
     allInputs[prevIndex].select();
   }
 }
 
-document.addEventListener("input",  liveUpdate, true);
-document.addEventListener("keyup",  liveUpdate, true);
-document.addEventListener("change", liveUpdate, true);
-document.addEventListener("keydown", handleKeyNavigation, true);
+// Initialize event listeners when component loads
+function initEventListeners() {
+  document.addEventListener("input", liveUpdate, true);
+  document.addEventListener("keyup", liveUpdate, true);
+  document.addEventListener("change", liveUpdate, true);
+  document.addEventListener("keydown", handleKeyNavigation, true);
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', initEventListeners);
 </script>
 """, unsafe_allow_html=True)
 
@@ -139,19 +158,17 @@ def parse_excel(uploaded_file) -> dict:
 def component_table(rows, vendor: str, branch: str):
     """
     SINGLE component on the page:
-     - bigger 1D/3D/5D buttons right under the title
      - table using B/C/D as base values
      - On-Hand live subtracts from all three columns
-     - Button -> builds invoice (non-zero only) from the CURRENT displayed values and opens WhatsApp
+     - Big prominent buttons at the bottom
     """
     trs = []
     for i, (prod, d1, d3, d5) in enumerate(rows):
         trs.append(
             '<tr>'
             f'<td id="prod-{i}">{prod}</td>'
-            f'<td><input class="onhand-input" type="number" inputmode="numeric" '
-            f'data-idx="{i}" data-day1="{d1}" data-day3="{d3}" data-day5="{d5}" '
-            f'value="0"></td>'
+            f'<td><input class="onhand-input" type="number" inputmode="numeric" placeholder="" '
+            f'data-idx="{i}" data-day1="{d1}" data-day3="{d3}" data-day5="{d5}"></td>'
             f'<td id="p1-{i}">{d1}</td>'
             f'<td id="p3-{i}">{d3}</td>'
             f'<td id="p5-{i}">{d5}</td>'
@@ -162,64 +179,75 @@ def component_table(rows, vendor: str, branch: str):
     vendor_js = json.dumps(vendor or "")
     branch_js = json.dumps(branch or "")
 
-    html = (
-        # buttons under header
-        '<div class="action-row">'
-        '<button onclick="sendWA(1)">1D</button>'
-        '<button onclick="sendWA(3)">3D</button>'
-        '<button onclick="sendWA(5)">5D</button>'
-        '</div>'
+    html = f"""
+        <!-- table -->
+        <table class="mobile-table">
+        <colgroup><col><col><col><col><col></colgroup>
+        <tr><th>Product</th><th>On Hand</th><th>1 Day</th><th>3 Day</th><th>5 Day</th></tr>
+        {body}
+        </table>
 
-        # table
-        '<table class="mobile-table">'
-        '<colgroup><col><col><col><col><col></colgroup>'
-        '<tr><th>Product</th><th>On Hand</th><th>1 Day</th><th>3 Day</th><th>5 Day</th></tr>'
-        + body +
-        '</table>'
+        <!-- prominent buttons at bottom -->
+        <div class="action-row">
+        <button onclick="sendWA(1)">1D</button>
+        <button onclick="sendWA(3)">3D</button>
+        <button onclick="sendWA(5)">5D</button>
+        </div>
 
-        # invoice / WA
-        '<script>'
-        'var VENDOR=' + vendor_js + ';'
-        'var BRANCH=' + branch_js + ';'
-        'function nowString(){var d=new Date();function pad(n){n=("0"+n).slice(-2);return n;}'
-        'return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+'
-        'pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());}'
-        'function buildInvoice(period){'
-        ' var pref=(period===1)?"p1-":(period===3)?"p3-":"p5-";'
-        ' var trs=document.querySelectorAll(".mobile-table tr");'
-        ' var lines=[];'
-        ' lines.push("*Vendor Demand Invoice*");'
-        ' lines.push("*Vendor:* "+VENDOR);'
-        ' lines.push("*Branch:* "+BRANCH);'
-        ' lines.push("*Projection:* "+period+" Day");'
-        ' lines.push("*Date:* "+nowString());'
-        ' lines.push("");'
-        ' lines.push("*ITEMS:*");'
-        ' var totalQty=0,totalItems=0;'
-        ' for(var i=1;i<trs.length;i++){'  # skip header row
-        '   var prod=document.getElementById("prod-"+(i-1));'
-        '   var qtyC=document.getElementById(pref+(i-1));'
-        '   if(!prod||!qtyC) continue;'
-        '   var name=(prod.textContent||"").trim();'
-        '   var qty=parseInt(qtyC.textContent||"0"); if(isNaN(qty)) qty=0;'
-        '   if(qty>0){ totalQty+=qty; totalItems+=1; lines.push("- "+name+": "+qty); }'
-        ' }'
-        ' lines.push("");'
-        ' lines.push("*TOTAL ITEMS:* "+totalItems);'
-        ' lines.push("*TOTAL QTY:* "+totalQty);'
-        ' return lines.join("\\n");'
-        '}'
-        'function sendWA(period){'
-        ' var text=buildInvoice(period);'
-        ' var url="https://api.whatsapp.com/send?text="+encodeURIComponent(text);'
-        ' var a=document.createElement("a"); a.href=url; a.target="_blank"; a.rel="noopener";'
-        ' document.body.appendChild(a); a.click(); a.remove();'
-        '}'
-        '</script>'
-    )
+        <!-- invoice / WA -->
+        <script>
+        var VENDOR={vendor_js};
+        var BRANCH={branch_js};
+        function nowString(){{
+            var d=new Date();
+            function pad(n){{n=("0"+n).slice(-2);return n;}}
+            return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+
+                   pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());
+        }}
+        function buildInvoice(period){{
+            var pref=(period===1)?"p1-":(period===3)?"p3-":"p5-";
+            var trs=document.querySelectorAll(".mobile-table tr");
+            var lines=[];
+            lines.push("*Vendor Demand Invoice*");
+            lines.push("*Vendor:* "+VENDOR);
+            lines.push("*Branch:* "+BRANCH);
+            lines.push("*Projection:* "+period+" Day");
+            lines.push("*Date:* "+nowString());
+            lines.push("");
+            lines.push("*ITEMS:*");
+            var totalQty=0,totalItems=0;
+            for(var i=1;i<trs.length;i++){{
+                var prod=document.getElementById("prod-"+(i-1));
+                var qtyC=document.getElementById(pref+(i-1));
+                if(!prod||!qtyC) continue;
+                var name=(prod.textContent||"").trim();
+                var qty=parseInt(qtyC.textContent||"0"); if(isNaN(qty)) qty=0;
+                if(qty>0){{ totalQty+=qty; totalItems+=1; lines.push("- "+name+": "+qty); }}
+            }}
+            lines.push("");
+            lines.push("*TOTAL ITEMS:* "+totalItems);
+            lines.push("*TOTAL QTY:* "+totalQty);
+            return lines.join("\\n");
+        }}
+        function sendWA(period){{
+            var text=buildInvoice(period);
+            var url="https://api.whatsapp.com/send?text="+encodeURIComponent(text);
+            var a=document.createElement("a"); a.href=url; a.target="_blank"; a.rel="noopener";
+            document.body.appendChild(a); a.click(); a.remove();
+        }}
+        
+        // Initialize event listeners for this component
+        document.addEventListener("DOMContentLoaded", function() {{
+            document.addEventListener("input", liveUpdate, true);
+            document.addEventListener("keyup", liveUpdate, true);
+            document.addEventListener("change", liveUpdate, true);
+            document.addEventListener("keydown", handleKeyNavigation, true);
+        }});
+        </script>
+    """
 
     # height so whole table shows (no inner scroll)
-    height = 130 + len(rows) * 44
+    height = 180 + len(rows) * 44
     components.html(html, height=height, scrolling=False)
 
 # ------------------------------ UI ------------------------------
@@ -256,18 +284,13 @@ if not ss.vendor_data:
         ss.current_vendor = list(ss.vendor_data.keys())[0]
         st.rerun()
 
-# 3) WHEN DATA EXISTS — render ONE component directly under header (no duplicates)
+# 3) WHEN DATA EXISTS — render component
 if ss.vendor_data:
     if ss.current_vendor is None or ss.current_vendor not in ss.vendor_data:
         ss.current_vendor = list(ss.vendor_data.keys())[0]
     rows = ss.vendor_data[ss.current_vendor]
     component_table(rows, ss.current_vendor, ss.current_branch)
 
-# 4) Controls BELOW the table
+# 4) Status message (minimal)
 if ss.vendor_data:
-    st.success(f"✅ Loaded {len(ss.vendor_data)} vendors")
-    
-    if st.button("📤 Upload New Excel File"):
-        ss.vendor_data = {}
-        ss.current_vendor = None
-        st.rerun()
+    st.success(f"✅ Loaded vendor: {ss.current_vendor} | Branch: {ss.current_branch}")
