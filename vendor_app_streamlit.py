@@ -24,11 +24,12 @@ h1#vendors-demand-title{
 
 /* projection buttons directly under the title */
 .action-row{
-  display:flex; justify-content:center; gap:10px; margin: 6px 0 10px;
+  display:flex; justify-content:center; gap:15px; margin: 6px 0 10px;
 }
 .action-row button{
-  background:#6c5ce7; color:#fff; border:none; border-radius:999px;
-  padding:4px 10px; font-size:12.5px; font-weight:700; cursor:pointer;
+  background:#6c5ce7; color:#fff; border:none; border-radius:8px;
+  padding:8px 20px; font-size:16px; font-weight:700; cursor:pointer;
+  min-width: 60px;
 }
 .action-row button:hover{ background:#5548d9; }
 .action-row button:active{ transform:translateY(1px); }
@@ -42,10 +43,20 @@ h1#vendors-demand-title{
 .mobile-table colgroup col:nth-child(4){ width:8.5%; }/* 3 Day */
 .mobile-table colgroup col:nth-child(5){ width:8%; }  /* 5 Day */
 
-/* On-Hand input ≈ 5 digits */
+/* On-Hand input - remove spinner buttons and improve navigation */
 .mobile-table input{
   width:40px; max-width:40px; font-size:15px; text-align:center;
   border:1px solid #aaa; border-radius:4px; padding:2px; background:#fafafa;
+}
+
+/* Remove spinner buttons from number input */
+.mobile-table input[type=number]::-webkit-outer-spin-button,
+.mobile-table input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.mobile-table input[type=number] {
+  -moz-appearance: textfield;
 }
 </style>
 
@@ -73,9 +84,32 @@ function liveUpdate(e){
   if(c5) c5.textContent = p5;
 }
 
+// Enhanced keyboard navigation for Excel-like behavior
+function handleKeyNavigation(e) {
+  if(!e.target.classList.contains("onhand-input")) return;
+  
+  var currentInput = e.target;
+  var currentIndex = parseInt(currentInput.getAttribute("data-idx"));
+  var allInputs = document.querySelectorAll('.onhand-input');
+  var totalInputs = allInputs.length;
+  
+  if (e.key === 'Enter' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    var nextIndex = (currentIndex + 1) % totalInputs;
+    allInputs[nextIndex].focus();
+    allInputs[nextIndex].select();
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    var prevIndex = (currentIndex - 1 + totalInputs) % totalInputs;
+    allInputs[prevIndex].focus();
+    allInputs[prevIndex].select();
+  }
+}
+
 document.addEventListener("input",  liveUpdate, true);
 document.addEventListener("keyup",  liveUpdate, true);
 document.addEventListener("change", liveUpdate, true);
+document.addEventListener("keydown", handleKeyNavigation, true);
 </script>
 """, unsafe_allow_html=True)
 
@@ -105,7 +139,7 @@ def parse_excel(uploaded_file) -> dict:
 def component_table(rows, vendor: str, branch: str):
     """
     SINGLE component on the page:
-     - tiny 1D/3D/5D buttons right under the title
+     - bigger 1D/3D/5D buttons right under the title
      - table using B/C/D as base values
      - On-Hand live subtracts from all three columns
      - Button -> builds invoice (non-zero only) from the CURRENT displayed values and opens WhatsApp
@@ -115,8 +149,9 @@ def component_table(rows, vendor: str, branch: str):
         trs.append(
             '<tr>'
             f'<td id="prod-{i}">{prod}</td>'
-            f'<td><input class="onhand-input" type="number" inputmode="numeric" pattern="[0-9]*" '
-            f'data-idx="{i}" data-day1="{d1}" data-day3="{d3}" data-day5="{d5}"></td>'
+            f'<td><input class="onhand-input" type="number" inputmode="numeric" '
+            f'data-idx="{i}" data-day1="{d1}" data-day3="{d3}" data-day5="{d5}" '
+            f'value="0"></td>'
             f'<td id="p1-{i}">{d1}</td>'
             f'<td id="p3-{i}">{d3}</td>'
             f'<td id="p5-{i}">{d5}</td>'
@@ -190,7 +225,30 @@ def component_table(rows, vendor: str, branch: str):
 # ------------------------------ UI ------------------------------
 st.markdown('<h1 id="vendors-demand-title">Vendors Demand</h1>', unsafe_allow_html=True)
 
-# 1) UPLOAD (first time)
+# 1) VENDOR SELECTION (top)
+if ss.vendor_data:
+    vendors = list(ss.vendor_data.keys())
+    c1, c2 = st.columns(2)
+    with c1:
+        new_vendor = st.selectbox("🔍 Select Vendor", vendors, 
+                                index=vendors.index(ss.current_vendor) if ss.current_vendor in vendors else 0,
+                                key="vendor_select")
+        if new_vendor != ss.current_vendor:
+            ss.current_vendor = new_vendor
+            st.rerun()
+    
+    with c2:
+        new_branch = st.selectbox(
+            "🏬 Select Branch",
+            ["Shahbaz","Clifton","Badar","DHA Ecom","BHD Ecom","BHD","Head Office"],
+            index=["Shahbaz","Clifton","Badar","DHA Ecom","BHD Ecom","BHD","Head Office"].index(ss.current_branch),
+            key="branch_select"
+        )
+        if new_branch != ss.current_branch:
+            ss.current_branch = new_branch
+            st.rerun()
+
+# 2) UPLOAD (first time or re-upload)
 if not ss.vendor_data:
     uploaded = st.file_uploader("📤 Upload Excel File", type=["xlsx", "xls"])
     if uploaded:
@@ -198,35 +256,18 @@ if not ss.vendor_data:
         ss.current_vendor = list(ss.vendor_data.keys())[0]
         st.rerun()
 
-# 2) WHEN DATA EXISTS — render ONE component directly under header (no duplicates)
+# 3) WHEN DATA EXISTS — render ONE component directly under header (no duplicates)
 if ss.vendor_data:
     if ss.current_vendor is None or ss.current_vendor not in ss.vendor_data:
         ss.current_vendor = list(ss.vendor_data.keys())[0]
     rows = ss.vendor_data[ss.current_vendor]
     component_table(rows, ss.current_vendor, ss.current_branch)
 
-# 3) Controls BELOW the table (changing them triggers rerun and the single component above re-renders)
+# 4) Controls BELOW the table
 if ss.vendor_data:
-    c1, c2, c3 = st.columns([2,2,1])
-    with c1:
-        st.success(f"✅ Loaded {len(ss.vendor_data)} vendors")
-    with c2:
-        vendors = list(ss.vendor_data.keys())
-        new_vendor = st.selectbox("🔍 Select Vendor", vendors, index=vendors.index(ss.current_vendor))
-        if new_vendor != ss.current_vendor:
-            ss.current_vendor = new_vendor
-            st.rerun()
-    with c3:
-        if st.button("📤 Upload Excel File"):
-            ss.vendor_data = {}
-            ss.current_vendor = None
-            st.rerun()
-
-    new_branch = st.selectbox(
-        "🏬 Select Branch",
-        ["Shahbaz","Clifton","Badar","DHA Ecom","BHD Ecom","BHD","Head Office"],
-        index=["Shahbaz","Clifton","Badar","DHA Ecom","BHD Ecom","BHD","Head Office"].index(ss.current_branch)
-    )
-    if new_branch != ss.current_branch:
-        ss.current_branch = new_branch
+    st.success(f"✅ Loaded {len(ss.vendor_data)} vendors")
+    
+    if st.button("📤 Upload New Excel File"):
+        ss.vendor_data = {}
+        ss.current_vendor = None
         st.rerun()
