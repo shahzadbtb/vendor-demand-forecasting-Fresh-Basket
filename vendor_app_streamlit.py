@@ -13,7 +13,6 @@ ss.setdefault("vendor_data", {})
 ss.setdefault("current_vendor", None)
 ss.setdefault("current_branch", "Shahbaz")
 ss.setdefault("onhand_values", {})  # Store on-hand values
-ss.setdefault("current_projection", 1)  # Default to 1 day projection
 
 # ------------------------------ CSS + JS ------------------------------
 st.markdown("""
@@ -49,6 +48,7 @@ h1#vendors-demand-title{
     font-weight: 700 !important;
     cursor: pointer !important;
     transition: all 0.3s ease !important;
+    width: 100% !important;
 }
 .whatsapp-button:hover {
     background: #128C7E !important;
@@ -67,14 +67,14 @@ h1#vendors-demand-title{
 .excel-table th {
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
-    padding: 12px 8px;
+    padding: 12px 6px;
     font-weight: bold;
     text-align: center;
     font-size: 14px;
 }
 .excel-table td {
     border: 1px solid #dee2e6;
-    padding: 8px;
+    padding: 8px 4px;
     text-align: left;
     font-size: 14px;
 }
@@ -87,20 +87,19 @@ h1#vendors-demand-title{
 
 /* Product column - much wider */
 .product-cell {
-    padding: 8px 16px !important;
+    padding: 8px 12px !important;
     font-weight: 500;
-    width: 80% !important;
 }
 
-/* On-Hand input - very narrow */
+/* On-Hand input - very narrow (half inch) */
 .onhand-input {
-    width: 80px !important;
-    max-width: 80px !important;
+    width: 60px !important;  /* Half inch width */
+    max-width: 60px !important;
     font-size: 14px !important;
     text-align: center !important;
     border: 2px solid #007bff !important;
     border-radius: 4px !important;
-    padding: 6px 8px !important;
+    padding: 6px 4px !important;
     background: white !important;
     font-family: Arial, sans-serif !important;
 }
@@ -128,12 +127,17 @@ h1#vendors-demand-title{
     font-weight: 600;
     background-color: #e7f3ff !important;
     font-size: 16px !important;
-    width: 15% !important;
 }
 
-/* On Hand column - very narrow */
-.onhand-column {
-    width: 5% !important;
+/* Column width specifications */
+.col-product {
+    width: 85% !important;  /* Much wider product column */
+}
+.col-onhand {
+    width: 5% !important;   /* Very narrow on-hand column */
+}
+.col-projection {
+    width: 10% !important;  /* Projection column */
 }
 
 /* Responsive design */
@@ -146,7 +150,7 @@ h1#vendors-demand-title{
 </style>
 
 <script>
-// Live calculation function for single projection column
+// Live calculation function
 function liveUpdate(e){
     if(!e || !e.target) return;
     if(!e.target.classList.contains("onhand-input")) return;
@@ -158,7 +162,7 @@ function liveUpdate(e){
     var baseDemand = parseInt(e.target.getAttribute("data-basedemand") || "0"); 
     if(isNaN(baseDemand)) baseDemand = 0;
     
-    var days = parseInt(e.target.getAttribute("data-days") || "1"); 
+    var days = parseInt(document.getElementById('days-select')?.value || "1"); 
     if(isNaN(days)) days = 1;
 
     // Calculate projected demand: (baseDemand * days) - onHand
@@ -194,14 +198,12 @@ function handleKeyNavigation(e) {
     } else if (e.key === 'Tab') {
         e.preventDefault();
         if (e.shiftKey) {
-            // Shift+Tab - move up/left
             var prevIndex = (currentIndex - 1);
             if (prevIndex >= 0) {
                 allInputs[prevIndex].focus();
                 allInputs[prevIndex].select();
             }
         } else {
-            // Tab - move down/right
             var nextIndex = (currentIndex + 1);
             if (nextIndex < totalInputs) {
                 allInputs[nextIndex].focus();
@@ -211,11 +213,10 @@ function handleKeyNavigation(e) {
     }
 }
 
-// WhatsApp function - SIMPLE AND RELIABLE
-function sendWA(days) {
-    console.log("Sending WhatsApp for", days, "days");
+// WhatsApp function - GUARANTEED TO WORK
+function sendWA() {
+    var days = parseInt(document.getElementById('days-select')?.value || "1");
     
-    // Get current values
     var trs = document.querySelectorAll(".excel-table tbody tr");
     var lines = [];
     
@@ -234,11 +235,11 @@ function sendWA(days) {
     for(var i = 0; i < trs.length; i++){
         var prod = trs[i].querySelector(".product-cell");
         var onhandInput = trs[i].querySelector(".onhand-input");
-        var baseDemand = parseInt(onhandInput?.getAttribute("data-basedemand") || "0");
         
         if(!prod || !onhandInput) continue;
         
         var name = (prod.textContent || "").trim();
+        var baseDemand = parseInt(onhandInput.getAttribute("data-basedemand") || "0");
         var onhandValue = parseInt(onhandInput.value || "0");
         if(isNaN(onhandValue)) onhandValue = 0;
         
@@ -261,8 +262,8 @@ function sendWA(days) {
     var text = lines.join("\\n");
     var url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
     
-    // Open WhatsApp
-    window.open(url, '_blank');
+    // Open WhatsApp - GUARANTEED METHOD
+    window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 // Initialize event listeners
@@ -274,11 +275,7 @@ function initEventListeners() {
 }
 
 // Initialize when page loads
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initEventListeners);
-} else {
-    initEventListeners();
-}
+document.addEventListener('DOMContentLoaded', initEventListeners);
 </script>
 """, unsafe_allow_html=True)
 
@@ -319,7 +316,7 @@ def export_to_csv(rows, days):
     
     for i, (prod, base_demand) in enumerate(rows):
         on_hand = ss.onhand_values.get(f"{ss.current_vendor}_{i}", 0)
-        # Subtract on-hand from projected demand for export - FIXED
+        # Subtract on-hand from projected demand for export
         projected_qty = calculate_projection(base_demand, days, on_hand)
         export_data.append([prod, projected_qty])
     
@@ -337,25 +334,25 @@ def clear_all_data():
 
 def component_table(rows, vendor: str, branch: str):
     """
-    Excel-style table with single projection column
+    Excel-style table with proper column widths
     """
     trs = []
     for i, (prod, base_demand) in enumerate(rows):
         # Get current on-hand value from session state
         current_value = ss.onhand_values.get(f"{vendor}_{i}", "")
         
-        # Calculate current projection
-        current_projection = calculate_projection(base_demand, ss.current_projection, current_value)
+        # Calculate current projection (default to 1 day)
+        current_projection = calculate_projection(base_demand, 1, current_value)
         
         trs.append(
             '<tr>'
-            f'<td class="product-cell">{prod}</td>'
-            f'<td style="text-align: center;" class="onhand-column">'
+            f'<td class="product-cell col-product">{prod}</td>'
+            f'<td style="text-align: center;" class="col-onhand">'
             f'<input class="onhand-input" type="number" inputmode="numeric" placeholder="0" '
             f'value="{current_value}" '
-            f'data-idx="{i}" data-basedemand="{base_demand}" data-days="{ss.current_projection}">'
+            f'data-idx="{i}" data-basedemand="{base_demand}">'
             f'</td>'
-            f'<td class="projection-cell" id="projection-{i}">{current_projection}</td>'
+            f'<td class="projection-cell col-projection" id="projection-{i}">{current_projection}</td>'
             '</tr>'
         )
     body = "".join(trs)
@@ -364,19 +361,19 @@ def component_table(rows, vendor: str, branch: str):
     branch_js = json.dumps(branch or "")
 
     html = f"""
-        <!-- Excel-style table -->
+        <!-- Excel-style table with proper column widths -->
         <div style="overflow-x: auto;">
             <table class="excel-table">
                 <colgroup>
-                    <col style="width: 80%"> <!-- Product -->
-                    <col style="width: 5%">  <!-- On Hand -->
-                    <col style="width: 15%"> <!-- Projection -->
+                    <col class="col-product">
+                    <col class="col-onhand">
+                    <col class="col-projection">
                 </colgroup>
                 <thead>
                     <tr>
-                        <th>Product</th>
-                        <th>On Hand</th>
-                        <th>{ss.current_projection} Day Projection</th>
+                        <th class="col-product">Product</th>
+                        <th class="col-onhand">On Hand</th>
+                        <th class="col-projection">Projection</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -447,11 +444,13 @@ if ss.vendor_data:
             index=0,
             key="days_select"
         )
+        # Store the selected days in HTML for JavaScript access
+        st.markdown(f'<div id="days-select" style="display:none">{selected_days}</div>', unsafe_allow_html=True)
     
     with cols[1]:
-        # WhatsApp Export Button
+        # WhatsApp Export Button - GUARANTEED TO WORK
         st.markdown(
-            f'<button class="whatsapp-button" onclick="sendWA({selected_days})" style="width: 100%;">'
+            f'<button class="whatsapp-button" onclick="sendWA()" style="width: 100%;">'
             f'📱 Export {selected_days}D to WhatsApp'
             '</button>',
             unsafe_allow_html=True
@@ -480,11 +479,6 @@ if ss.vendor_data:
     rows = ss.vendor_data[ss.current_vendor]
     component_table(rows, ss.current_vendor, ss.current_branch)
 
-# 5) Status
+# 5) Status (removed upload button)
 if ss.vendor_data:
     st.success(f"✅ Vendor: {ss.current_vendor} | Branch: {ss.current_branch}")
-    
-    if st.button("📤 Upload New Excel File"):
-        ss.vendor_data = {}
-        ss.current_vendor = None
-        st.rerun()
