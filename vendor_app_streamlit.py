@@ -418,6 +418,7 @@ if not ss.vendor_data:
 
 # 3) ACTION BUTTONS - Demand Calculation
 if ss.vendor_data:
+    st.markdown("### 📊 Select Projection Days")
     st.markdown('<div class="button-container">', unsafe_allow_html=True)
     
     # Create 7 columns for buttons
@@ -443,25 +444,29 @@ if ss.vendor_data:
 
 # 4) ACTION BUTTONS - Clear and Export
 if ss.vendor_data:
+    st.markdown("### 🛠️ Actions")
     st.markdown('<div class="button-container">', unsafe_allow_html=True)
     
-    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+    # Create 8 columns for more space
+    cols = st.columns(8)
     
-    with col1:
+    # Clear button
+    with cols[0]:
         if st.button("🗑️ Clear All", use_container_width=True, type="secondary"):
             clear_all_data()
     
-    # Export buttons for different days
+    # Export buttons for different days (1-7)
     export_days = [1, 2, 3, 4, 5, 6, 7]
     for i, days in enumerate(export_days):
-        with [col2, col3, col4, col5, col6, col7][i]:
+        with cols[i + 1]:  # Start from column 1 (after clear button)
             csv_data = export_to_csv(ss.vendor_data[ss.current_vendor], days)
             st.download_button(
-                label=f"📥 Export {days}D",
+                label=f"📥 {days}D",
                 data=csv_data,
                 file_name=f"vendor_demand_{days}day_{ss.current_vendor}.csv",
                 mime="text/csv",
-                use_container_width=True
+                use_container_width=True,
+                key=f"export_{days}"
             )
     
     st.markdown('</div>', unsafe_allow_html=True)
