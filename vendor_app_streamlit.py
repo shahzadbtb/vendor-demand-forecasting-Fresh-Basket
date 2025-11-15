@@ -26,7 +26,7 @@ h1#vendors-demand-title{
 .projection-buttons-container {
     display: flex;
     justify-content: center;
-    gap: 25px;
+    gap: 20px;
     width: 100%;
     margin: 20px 0;
     padding: 15px;
@@ -40,11 +40,11 @@ h1#vendors-demand-title{
     color: #6c5ce7 !important;
     border: none !important;
     border-radius: 10px !important;
-    padding: 15px 30px !important;
-    font-size: 20px !important;
+    padding: 15px 25px !important;
+    font-size: 18px !important;
     font-weight: 800 !important;
     cursor: pointer !important;
-    min-width: 100px !important;
+    min-width: 90px !important;
     transition: all 0.3s ease !important;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
 }
@@ -56,6 +56,31 @@ h1#vendors-demand-title{
 }
 
 .projection-button:active {
+    transform: translateY(0px) !important;
+}
+
+/* Clear button specific styling */
+.clear-button {
+    background: #ff6b6b !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 15px 25px !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    cursor: pointer !important;
+    min-width: 90px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 10px rgba(255, 107, 107, 0.3) !important;
+}
+
+.clear-button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4) !important;
+    background: #ff5252 !important;
+}
+
+.clear-button:active {
     transform: translateY(0px) !important;
 }
 
@@ -134,12 +159,13 @@ h1#vendors-demand-title{
 /* Responsive design */
 @media (max-width: 768px) {
     .projection-buttons-container {
-        gap: 15px;
+        gap: 12px;
         padding: 12px;
+        flex-wrap: wrap;
     }
     
-    .projection-button {
-        padding: 12px 20px !important;
+    .projection-button, .clear-button {
+        padding: 12px 18px !important;
         font-size: 16px !important;
         min-width: 70px !important;
     }
@@ -219,6 +245,23 @@ function handleKeyNavigation(e) {
     }
 }
 
+// Clear all input fields
+function clearAllData() {
+    var inputs = document.querySelectorAll('.onhand-input');
+    inputs.forEach(function(input) {
+        input.value = '';
+    });
+    
+    // Trigger live update to reset projections
+    inputs.forEach(function(input) {
+        var event = new Event('input', { bubbles: true });
+        input.dispatchEvent(event);
+    });
+    
+    // Show confirmation message
+    alert('All On Hand data has been cleared!');
+}
+
 // Initialize event listeners
 function initEventListeners() {
     document.addEventListener("input", liveUpdate, true);
@@ -261,7 +304,7 @@ def parse_excel(uploaded_file) -> dict:
 
 def component_table(rows, vendor: str, branch: str):
     """
-    Excel-style table with prominent buttons at TOP
+    Excel-style table with prominent buttons at TOP including Clear button
     """
     trs = []
     for i, (prod, d1, d3, d5) in enumerate(rows):
@@ -288,6 +331,7 @@ def component_table(rows, vendor: str, branch: str):
             <button class="projection-button" onclick="sendWA(1)">1 Day</button>
             <button class="projection-button" onclick="sendWA(3)">3 Day</button>
             <button class="projection-button" onclick="sendWA(5)">5 Day</button>
+            <button class="clear-button" onclick="clearAllData()">Clear</button>
         </div>
 
         <!-- Excel-style table -->
