@@ -12,6 +12,7 @@ ss = st.session_state
 ss.setdefault("vendor_data", {})
 ss.setdefault("current_vendor", None)
 ss.setdefault("current_branch", "Shahbaz")
+ss.setdefault("onhand_values", {})  # Store on-hand values
 
 # ------------------------------ CSS + JS ------------------------------
 st.markdown("""
@@ -23,8 +24,8 @@ h1#vendors-demand-title{
   text-align:center; margin:4px 0 6px 0; font-size:1.36rem; font-weight:800;
 }
 
-/* Projection buttons - TOP PROMINENT */
-.projection-buttons-container {
+/* Button container */
+.button-container {
     display: flex;
     justify-content: center;
     gap: 15px;
@@ -34,80 +35,6 @@ h1#vendors-demand-title{
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
-
-.projection-button {
-    background: white !important;
-    color: #6c5ce7 !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 12px 20px !important;
-    font-size: 16px !important;
-    font-weight: 800 !important;
-    cursor: pointer !important;
-    min-width: 80px !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
-}
-
-.projection-button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
-    background: #f8f9fa !important;
-}
-
-.projection-button:active {
-    transform: translateY(0px) !important;
-}
-
-/* Clear button specific styling */
-.clear-button {
-    background: #ff6b6b !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 12px 20px !important;
-    font-size: 16px !important;
-    font-weight: 800 !important;
-    cursor: pointer !important;
-    min-width: 80px !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 2px 10px rgba(255, 107, 107, 0.3) !important;
-}
-
-.clear-button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4) !important;
-    background: #ff5252 !important;
-}
-
-.clear-button:active {
-    transform: translateY(0px) !important;
-}
-
-/* Export button specific styling */
-.export-button {
-    background: #00b894 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 12px 20px !important;
-    font-size: 16px !important;
-    font-weight: 800 !important;
-    cursor: pointer !important;
-    min-width: 80px !important;
-    transition: all 0.3s ease !important;
-    box-shadow: 0 2px 10px rgba(0, 184, 148, 0.3) !important;
-}
-
-.export-button:hover {
-    transform: translateY(-2px) !important;
-    box-shadow: 0 4px 15px rgba(0, 184, 148, 0.4) !important;
-    background: #00a085 !important;
-}
-
-.export-button:active {
-    transform: translateY(0px) !important;
 }
 
 /* Excel-style table */
@@ -184,16 +111,10 @@ h1#vendors-demand-title{
 
 /* Responsive design */
 @media (max-width: 768px) {
-    .projection-buttons-container {
+    .button-container {
         gap: 10px;
         padding: 12px;
         flex-wrap: wrap;
-    }
-    
-    .projection-button, .clear-button, .export-button {
-        padding: 10px 15px !important;
-        font-size: 14px !important;
-        min-width: 70px !important;
     }
 }
 </style>
@@ -271,69 +192,6 @@ function handleKeyNavigation(e) {
     }
 }
 
-// Clear all input fields - FIXED VERSION
-function clearAllData() {
-    var inputs = document.querySelectorAll('.onhand-input');
-    inputs.forEach(function(input) {
-        input.value = '';
-    });
-    
-    // Trigger live update to reset projections to original values
-    inputs.forEach(function(input) {
-        var idx = input.getAttribute("data-idx");
-        var b1 = parseInt(input.getAttribute("data-day1") || "0");
-        var b3 = parseInt(input.getAttribute("data-day3") || "0");
-        var b5 = parseInt(input.getAttribute("data-day5") || "0");
-        
-        document.getElementById("p1-"+idx).textContent = b1;
-        document.getElementById("p3-"+idx).textContent = b3;
-        document.getElementById("p5-"+idx).textContent = b5;
-    });
-    
-    // Show confirmation message
-    alert('All On Hand data has been cleared! Projections reset to original values.');
-}
-
-// Export to CSV function
-function exportToCSV(period) {
-    var pref = (period === 1) ? "p1-" : (period === 3) ? "p3-" : "p5-";
-    var trs = document.querySelectorAll(".excel-table tbody tr");
-    var csvData = [];
-    
-    // Add headers
-    csvData.push(["Product", "Projected Qty"]);
-    
-    // Add all rows (including zero quantities)
-    for(var i = 0; i < trs.length; i++) {
-        var prod = trs[i].querySelector(".product-cell");
-        var qtyC = document.getElementById(pref + i);
-        if(!prod || !qtyC) continue;
-        
-        var name = (prod.textContent || "").trim();
-        var qty = parseInt(qtyC.textContent || "0"); 
-        if(isNaN(qty)) qty = 0;
-        
-        csvData.push([name, qty]);
-    }
-    
-    // Convert to CSV string
-    var csvContent = "data:text/csv;charset=utf-8,";
-    csvData.forEach(function(row) {
-        csvContent += row.map(function(field) {
-            return '"' + String(field).replace(/"/g, '""') + '"';
-        }).join(",") + "\\r\\n";
-    });
-    
-    // Create download link
-    var encodedUri = encodeURI(csvContent);
-    var link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "vendor_demand_" + period + "day.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
 // Initialize event listeners
 function initEventListeners() {
     document.addEventListener("input", liveUpdate, true);
@@ -374,22 +232,53 @@ def parse_excel(uploaded_file) -> dict:
             data[sheet] = rows
     return data
 
+def export_to_csv(rows, period):
+    """Export data to CSV with Product and Projected Qty columns"""
+    export_data = []
+    
+    for i, (prod, d1, d3, d5) in enumerate(rows):
+        if period == 1:
+            projected_qty = d1 - int(ss.onhand_values.get(f"{ss.current_vendor}_{i}", 0))
+        elif period == 3:
+            projected_qty = d3 - int(ss.onhand_values.get(f"{ss.current_vendor}_{i}", 0))
+        else:  # period == 5
+            projected_qty = d5 - int(ss.onhand_values.get(f"{ss.current_vendor}_{i}", 0))
+        
+        projected_qty = max(0, projected_qty)
+        export_data.append([prod, projected_qty])
+    
+    # Create DataFrame
+    df = pd.DataFrame(export_data, columns=['Product', 'Projected Qty'])
+    
+    # Convert to CSV
+    csv = df.to_csv(index=False)
+    return csv
+
+def clear_all_data():
+    """Clear all on-hand values"""
+    ss.onhand_values = {}
+    st.rerun()
+
 def component_table(rows, vendor: str, branch: str):
     """
-    Excel-style table with prominent buttons at TOP including Clear and Export buttons
+    Excel-style table with interactive inputs
     """
     trs = []
     for i, (prod, d1, d3, d5) in enumerate(rows):
+        # Get current on-hand value from session state
+        current_value = ss.onhand_values.get(f"{vendor}_{i}", "")
+        
         trs.append(
             '<tr>'
             f'<td class="product-cell">{prod}</td>'
             f'<td style="text-align: center;">'
             f'<input class="onhand-input" type="number" inputmode="numeric" placeholder="0" '
+            f'value="{current_value}" '
             f'data-idx="{i}" data-day1="{d1}" data-day3="{d3}" data-day5="{d5}">'
             f'</td>'
-            f'<td class="projection-cell" id="p1-{i}">{d1}</td>'
-            f'<td class="projection-cell" id="p3-{i}">{d3}</td>'
-            f'<td class="projection-cell" id="p5-{i}">{d5}</td>'
+            f'<td class="projection-cell" id="p1-{i}">{d1 - int(current_value or 0)}</td>'
+            f'<td class="projection-cell" id="p3-{i}">{d3 - int(current_value or 0)}</td>'
+            f'<td class="projection-cell" id="p5-{i}">{d5 - int(current_value or 0)}</td>'
             '</tr>'
         )
     body = "".join(trs)
@@ -398,17 +287,6 @@ def component_table(rows, vendor: str, branch: str):
     branch_js = json.dumps(branch or "")
 
     html = f"""
-        <!-- PROMINENT BUTTONS AT TOP -->
-        <div class="projection-buttons-container">
-            <button class="projection-button" onclick="sendWA(1)">1 Day</button>
-            <button class="projection-button" onclick="sendWA(3)">3 Day</button>
-            <button class="projection-button" onclick="sendWA(5)">5 Day</button>
-            <button class="clear-button" onclick="clearAllData()">Clear</button>
-            <button class="export-button" onclick="exportToCSV(1)">Export 1D</button>
-            <button class="export-button" onclick="exportToCSV(3)">Export 3D</button>
-            <button class="export-button" onclick="exportToCSV(5)">Export 5D</button>
-        </div>
-
         <!-- Excel-style table -->
         <div style="overflow-x: auto;">
             <table class="excel-table">
@@ -536,13 +414,70 @@ if not ss.vendor_data:
         ss.current_vendor = list(ss.vendor_data.keys())[0]
         st.rerun()
 
-# 3) WHEN DATA EXISTS — render Excel-style table
+# 3) ACTION BUTTONS
+if ss.vendor_data:
+    st.markdown('<div class="button-container">', unsafe_allow_html=True)
+    
+    col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+    
+    with col1:
+        if st.button("📱 1 Day", use_container_width=True, type="primary"):
+            # WhatsApp functionality will be handled by JavaScript
+            pass
+    
+    with col2:
+        if st.button("📱 3 Day", use_container_width=True, type="primary"):
+            # WhatsApp functionality will be handled by JavaScript
+            pass
+    
+    with col3:
+        if st.button("📱 5 Day", use_container_width=True, type="primary"):
+            # WhatsApp functionality will be handled by JavaScript
+            pass
+    
+    with col4:
+        if st.button("🗑️ Clear All", use_container_width=True, type="secondary"):
+            clear_all_data()
+    
+    with col5:
+        csv_1d = export_to_csv(ss.vendor_data[ss.current_vendor], 1)
+        st.download_button(
+            label="📥 Export 1D",
+            data=csv_1d,
+            file_name=f"vendor_demand_1day_{ss.current_vendor}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    with col6:
+        csv_3d = export_to_csv(ss.vendor_data[ss.current_vendor], 3)
+        st.download_button(
+            label="📥 Export 3D",
+            data=csv_3d,
+            file_name=f"vendor_demand_3day_{ss.current_vendor}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    with col7:
+        csv_5d = export_to_csv(ss.vendor_data[ss.current_vendor], 5)
+        st.download_button(
+            label="📥 Export 5D",
+            data=csv_5d,
+            file_name=f"vendor_demand_5day_{ss.current_vendor}.csv",
+            mime="text/csv",
+            use_container_width=True
+        )
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# 4) WHEN DATA EXISTS — render Excel-style table
 if ss.vendor_data:
     if ss.current_vendor is None or ss.current_vendor not in ss.vendor_data:
         ss.current_vendor = list(ss.vendor_data.keys())[0]
     rows = ss.vendor_data[ss.current_vendor]
     component_table(rows, ss.current_vendor, ss.current_branch)
 
-# 4) Status (removed the upload button from bottom)
+# 5) Status
 if ss.vendor_data:
     st.success(f"✅ Loaded vendor: {ss.current_vendor} | Branch: {ss.current_branch}")
