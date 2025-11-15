@@ -13,7 +13,6 @@ ss.setdefault("vendor_data", {})
 ss.setdefault("current_vendor", None)
 ss.setdefault("current_branch", "Shahbaz")
 ss.setdefault("onhand_values", {})  # Store on-hand values
-ss.setdefault("current_projection", 1)  # Default to 1 day projection
 
 # ------------------------------ CSS + JS ------------------------------
 st.markdown("""
@@ -25,40 +24,65 @@ h1#vendors-demand-title{
   text-align:center; margin:4px 0 6px 0; font-size:1.36rem; font-weight:800;
 }
 
-/* projection buttons directly under the title */
+/* projection buttons with more gap */
 .action-row{
-  display:flex; justify-content:center; gap:15px; margin: 6px 0 10px;
+  display:flex;
+  justify-content:center;
+  gap: 25px; /* Increased gap */
+  margin: 15px 0 20px;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
 }
 .action-row button{
-  background:#6c5ce7; color:#fff; border:none; border-radius:8px;
-  padding:8px 20px; font-size:16px; font-weight:700; cursor:pointer;
-  min-width: 60px;
+  background:#6c5ce7;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  padding:10px 25px;
+  font-size:16px;
+  font-weight:700;
+  cursor:pointer;
+  min-width: 70px;
+  transition: all 0.3s ease;
 }
-.action-row button:hover{ background:#5548d9; }
-.action-row button:active{ transform:translateY(1px); }
+.action-row button:hover{
+  background:#5548d9;
+  transform: translateY(-2px);
+}
+.action-row button:active{
+  transform: translateY(0px);
+}
 
-/* table: product wider, on-hand ultra narrow */
-.mobile-table{ 
-    width:100%; 
-    border-collapse:collapse; 
-    table-layout:fixed; 
-    margin-top:4px; 
+/* table: product much wider, on-hand very narrow */
+.mobile-table{
+  width:100%;
+  border-collapse:collapse;
+  table-layout:fixed;
+  margin-top:10px;
 }
 .mobile-table th,
-.mobile-table td{ 
-    border:1px solid #e5e5e5; 
-    text-align:center; 
-    padding:6px; 
-    font-size:15px; 
+.mobile-table td{
+  border:1px solid #e5e5e5;
+  text-align:center;
+  padding:8px 4px;
+  font-size:15px;
 }
-.mobile-table colgroup col:nth-child(1){ width:75%; } /* Product (wider) */
-.mobile-table colgroup col:nth-child(2){ width:10%; }  /* On Hand (very small) */
-.mobile-table colgroup col:nth-child(3){ width:15%; }  /* Projection */
+/* Column widths - Product much wider, On Hand very narrow */
+.mobile-table colgroup col:nth-child(1){ width: 80%; } /* Product - Much wider */
+.mobile-table colgroup col:nth-child(2){ width: 8%; }  /* On Hand - Very narrow (half inch) */
+.mobile-table colgroup col:nth-child(3){ width: 12%; } /* Projection */
 
-/* On-Hand input - remove spinner buttons and improve navigation */
+/* On-Hand input - very narrow */
 .mobile-table input{
-  width:80px; max-width:80px; font-size:15px; text-align:center;
-  border:1px solid #aaa; border-radius:4px; padding:2px; background:#fafafa;
+  width: 65px; /* Very narrow */
+  max-width: 65px;
+  font-size:14px;
+  text-align:center;
+  border:1px solid #aaa;
+  border-radius:4px;
+  padding:4px 2px;
+  background:#fafafa;
 }
 
 /* Remove spinner buttons from number input */
@@ -70,10 +94,16 @@ h1#vendors-demand-title{
 .mobile-table input[type=number] {
   -moz-appearance: textfield;
 }
+
+/* Product cell alignment */
+.product-cell {
+  text-align: left !important;
+  padding-left: 12px !important;
+}
 </style>
 
 <script>
-// --- live subtraction & robust mobile events ---
+// --- live subtraction ---
 function liveUpdate(e){
   if(!e || !e.target) return;
   if(!e.target.classList.contains("onhand-input")) return;
@@ -95,7 +125,7 @@ function liveUpdate(e){
   if(projectionCell) projectionCell.textContent = projected;
 }
 
-// Enhanced keyboard navigation for Excel-like behavior
+// Keyboard navigation
 function handleKeyNavigation(e) {
   if(!e.target.classList.contains("onhand-input")) return;
   
@@ -119,25 +149,77 @@ function handleKeyNavigation(e) {
 
 // Function to change projection days
 function changeProjection(days) {
-    var inputs = document.querySelectorAll('.onhand-input');
-    inputs.forEach(function(input) {
-        input.setAttribute('data-days', days);
-        // Trigger update
-        var event = new Event('input', { bubbles: true });
-        input.dispatchEvent(event);
-    });
-    
-    // Update the projection column header
-    var header = document.querySelector('.mobile-table th:nth-child(3)');
-    if(header) {
-        header.textContent = days + ' Day Projection';
-    }
+  var inputs = document.querySelectorAll('.onhand-input');
+  inputs.forEach(function(input) {
+    input.setAttribute('data-days', days);
+    // Trigger update
+    var event = new Event('input', { bubbles: true });
+    input.dispatchEvent(event);
+  });
+  
+  // Update the projection column header
+  var header = document.querySelector('.mobile-table th:nth-child(3)');
+  if(header) {
+    header.textContent = days + ' Day Projection';
+  }
 }
 
-document.addEventListener("input",  liveUpdate, true);
-document.addEventListener("keyup",  liveUpdate, true);
-document.addEventListener("change", liveUpdate, true);
-document.addEventListener("keydown", handleKeyNavigation, true);
+// WhatsApp function - SIMPLE AND RELIABLE
+function sendWA(days) {
+  // First update to the selected projection
+  changeProjection(days);
+  
+  // Wait for calculations to complete
+  setTimeout(function() {
+    var trs = document.querySelectorAll(".mobile-table tbody tr");
+    var lines = [];
+    
+    lines.push("🏪 *Vendor Demand Invoice*");
+    lines.push("👤 *Vendor:* " + (window.VENDOR || ""));
+    lines.push("🏬 *Branch:* " + (window.BRANCH || ""));
+    lines.push("📊 *Projection:* " + days + " Day");
+    lines.push("📅 *Date:* " + new Date().toLocaleString());
+    lines.push("");
+    lines.push("📦 *ITEMS:*");
+    
+    var totalQty = 0, totalItems = 0;
+    for(var i = 0; i < trs.length; i++){
+      var prodCell = trs[i].querySelector("td:first-child");
+      var qtyCell = document.getElementById("projection-" + i);
+      if(!prodCell || !qtyCell) continue;
+      
+      var name = (prodCell.textContent || "").trim();
+      var qty = parseInt(qtyCell.textContent || "0"); 
+      if(isNaN(qty)) qty = 0;
+      
+      if(qty > 0){
+        totalQty += qty; 
+        totalItems += 1; 
+        lines.push("• " + name + ": " + qty);
+      }
+    }
+    
+    lines.push("");
+    lines.push("📋 *TOTAL ITEMS:* " + totalItems);
+    lines.push("📦 *TOTAL QTY:* " + totalQty);
+    lines.push("");
+    lines.push("Thank you! 🚀");
+    
+    var text = lines.join("\\n");
+    var url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
+    
+    // Open WhatsApp - SIMPLE AND RELIABLE METHOD
+    window.open(url, '_blank');
+  }, 300);
+}
+
+// Initialize event listeners
+document.addEventListener("DOMContentLoaded", function() {
+  document.addEventListener("input", liveUpdate, true);
+  document.addEventListener("keyup", liveUpdate, true);
+  document.addEventListener("change", liveUpdate, true);
+  document.addEventListener("keydown", handleKeyNavigation, true);
+});
 </script>
 """, unsafe_allow_html=True)
 
@@ -196,22 +278,22 @@ def clear_all_data():
 
 def component_table(rows, vendor: str, branch: str):
     """
-    SINGLE component on the page with working WhatsApp buttons
+    SINGLE component with working WhatsApp buttons
     """
     trs = []
     for i, (prod, base_demand) in enumerate(rows):
         # Get current on-hand value from session state
         current_value = ss.onhand_values.get(f"{vendor}_{i}", "")
         
-        # Calculate current projection
-        current_projection = calculate_projection(base_demand, ss.current_projection, current_value)
+        # Calculate current projection (default to 1 day)
+        current_projection = calculate_projection(base_demand, 1, current_value)
         
         trs.append(
             '<tr>'
-            f'<td id="prod-{i}">{prod}</td>'
+            f'<td class="product-cell">{prod}</td>'
             f'<td><input class="onhand-input" type="number" inputmode="numeric" '
             f'value="{current_value}" '
-            f'data-idx="{i}" data-basedemand="{base_demand}" data-days="{ss.current_projection}"></td>'
+            f'data-idx="{i}" data-basedemand="{base_demand}" data-days="1"></td>'
             f'<td id="projection-{i}">{current_projection}</td>'
             '</tr>'
         )
@@ -221,7 +303,7 @@ def component_table(rows, vendor: str, branch: str):
     branch_js = json.dumps(branch or "")
 
     html = (
-        # buttons under header - WhatsApp buttons
+        # WhatsApp buttons with more gap
         '<div class="action-row">'
         '<button onclick="sendWA(1)">1 Day</button>'
         '<button onclick="sendWA(2)">2 Day</button>'
@@ -232,74 +314,25 @@ def component_table(rows, vendor: str, branch: str):
         '<button onclick="sendWA(7)">7 Day</button>'
         '</div>'
 
-        # table
+        # Table with proper column widths
         '<table class="mobile-table">'
-        '<colgroup><col><col><col></colgroup>'
-        '<tr><th>Product</th><th>On Hand</th><th>' + str(ss.current_projection) + ' Day Projection</th></tr>'
+        '<colgroup>'
+        '<col>'  # Product - 80%
+        '<col>'  # On Hand - 8% 
+        '<col>'  # Projection - 12%
+        '</colgroup>'
+        '<tr><th>Product</th><th>On Hand</th><th>1 Day Projection</th></tr>'
         + body +
         '</table>'
 
-        # invoice / WA - USING WORKING CODE FROM OLD VERSION
+        # WhatsApp script - SIMPLE AND RELIABLE
         '<script>'
-        'var VENDOR=' + vendor_js + ';'
-        'var BRANCH=' + branch_js + ';'
-        'function nowString(){var d=new Date();function pad(n){n=("0"+n).slice(-2);return n;}'
-        'return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+" "+'
-        'pad(d.getHours())+":"+pad(d.getMinutes())+":"+pad(d.getSeconds());}'
-        
-        'function buildInvoice(period){'
-        ' var trs=document.querySelectorAll(".mobile-table tr");'
-        ' var lines=[];'
-        ' lines.push("🏪 *Vendor Demand Invoice*");'
-        ' lines.push("👤 *Vendor:* "+VENDOR);'
-        ' lines.push("🏬 *Branch:* "+BRANCH);'
-        ' lines.push("📊 *Projection:* "+period+" Day");'
-        ' lines.push("📅 *Date:* "+nowString());'
-        ' lines.push("");'
-        ' lines.push("📦 *ITEMS:*");'
-        ' var totalQty=0,totalItems=0;'
-        ' for(var i=1;i<trs.length;i++){'  # skip header row
-        '   var prod=document.getElementById("prod-"+(i-1));'
-        '   var qtyC=document.getElementById("projection-"+(i-1));'
-        '   if(!prod||!qtyC) continue;'
-        '   var name=(prod.textContent||"").trim();'
-        '   var qty=parseInt(qtyC.textContent||"0"); if(isNaN(qty)) qty=0;'
-        '   if(qty>0){ totalQty+=qty; totalItems+=1; lines.push("• "+name+": "+qty); }'
-        ' }'
-        ' lines.push("");'
-        ' lines.push("📋 *TOTAL ITEMS:* "+totalItems);'
-        ' lines.push("📦 *TOTAL QTY:* "+totalQty);'
-        ' lines.push("");'
-        ' lines.push("Thank you! 🚀");'
-        ' return lines.join("\\n");'
-        '}'
-        
-        'function sendWA(period){'
-        ' // First update projection to selected days'
-        ' var inputs=document.querySelectorAll(".onhand-input");'
-        ' inputs.forEach(function(input){'
-        '   input.setAttribute("data-days", period);'
-        '   var event=new Event("input",{bubbles:true});'
-        '   input.dispatchEvent(event);'
-        ' });'
-        ' '
-        ' // Update header'
-        ' var header=document.querySelector(".mobile-table th:nth-child(3)");'
-        ' if(header){header.textContent=period+" Day Projection";}'
-        ' '
-        ' // Wait a bit then send'
-        ' setTimeout(function(){'
-        '   var text=buildInvoice(period);'
-        '   var url="https://api.whatsapp.com/send?text="+encodeURIComponent(text);'
-        '   var a=document.createElement("a"); a.href=url; a.target="_blank"; a.rel="noopener";'
-        '   document.body.appendChild(a); a.click(); a.remove();'
-        ' }, 200);'
-        '}'
+        'window.VENDOR = ' + vendor_js + ';'
+        'window.BRANCH = ' + branch_js + ';'
         '</script>'
     )
 
-    # height so whole table shows (no inner scroll)
-    height = 130 + len(rows) * 44
+    height = 140 + len(rows) * 44
     components.html(html, height=height, scrolling=False)
 
 # ------------------------------ UI ------------------------------
