@@ -22,59 +22,48 @@ h1#vendors-demand-title{
   text-align:center; margin:4px 0 6px 0; font-size:1.36rem; font-weight:800;
 }
 
-/* Projection buttons - VERY PROMINENT */
+/* Projection buttons - TOP PROMINENT */
 .projection-buttons-container {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
     display: flex;
     justify-content: center;
-    gap: 30px;
+    gap: 25px;
     width: 100%;
-    max-width: 600px;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
-    z-index: 1000;
-    border: 2px solid #6c5ce7;
+    margin: 20px 0;
+    padding: 15px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
 }
 
 .projection-button {
-    background: linear-gradient(135deg, #6c5ce7, #5548d9) !important;
-    color: white !important;
+    background: white !important;
+    color: #6c5ce7 !important;
     border: none !important;
-    border-radius: 12px !important;
-    padding: 20px 40px !important;
-    font-size: 24px !important;
+    border-radius: 10px !important;
+    padding: 15px 30px !important;
+    font-size: 20px !important;
     font-weight: 800 !important;
     cursor: pointer !important;
-    min-width: 120px !important;
+    min-width: 100px !important;
     transition: all 0.3s ease !important;
-    box-shadow: 0 4px 15px rgba(108, 92, 231, 0.3) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
 }
 
 .projection-button:hover {
-    transform: translateY(-3px) !important;
-    box-shadow: 0 6px 20px rgba(108, 92, 231, 0.4) !important;
-    background: linear-gradient(135deg, #5548d9, #483bd1) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2) !important;
+    background: #f8f9fa !important;
 }
 
 .projection-button:active {
-    transform: translateY(1px) !important;
-}
-
-/* Add padding to bottom to prevent content hiding behind fixed buttons */
-.main-content {
-    padding-bottom: 150px !important;
+    transform: translateY(0px) !important;
 }
 
 /* Excel-style table */
 .excel-table { 
     width: 100%; 
     border-collapse: collapse; 
-    margin: 10px 0;
+    margin: 20px 0;
     font-family: Arial, sans-serif;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
@@ -145,20 +134,14 @@ h1#vendors-demand-title{
 /* Responsive design */
 @media (max-width: 768px) {
     .projection-buttons-container {
-        bottom: 10px;
-        padding: 15px;
         gap: 15px;
-        max-width: 95%;
+        padding: 12px;
     }
     
     .projection-button {
-        padding: 15px 25px !important;
-        font-size: 20px !important;
-        min-width: 80px !important;
-    }
-    
-    .main-content {
-        padding-bottom: 130px !important;
+        padding: 12px 20px !important;
+        font-size: 16px !important;
+        min-width: 70px !important;
     }
 }
 </style>
@@ -278,7 +261,7 @@ def parse_excel(uploaded_file) -> dict:
 
 def component_table(rows, vendor: str, branch: str):
     """
-    Excel-style table with prominent buttons at bottom
+    Excel-style table with prominent buttons at TOP
     """
     trs = []
     for i, (prod, d1, d3, d5) in enumerate(rows):
@@ -300,31 +283,29 @@ def component_table(rows, vendor: str, branch: str):
     branch_js = json.dumps(branch or "")
 
     html = f"""
-        <div class="main-content">
-            <!-- Excel-style table -->
-            <div style="overflow-x: auto;">
-                <table class="excel-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 60%;">Product</th>
-                            <th style="width: 10%;">On Hand</th>
-                            <th style="width: 10%;">1 Day</th>
-                            <th style="width: 10%;">3 Day</th>
-                            <th style="width: 10%;">5 Day</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {body}
-                    </tbody>
-                </table>
-            </div>
+        <!-- PROMINENT BUTTONS AT TOP -->
+        <div class="projection-buttons-container">
+            <button class="projection-button" onclick="sendWA(1)">1 Day</button>
+            <button class="projection-button" onclick="sendWA(3)">3 Day</button>
+            <button class="projection-button" onclick="sendWA(5)">5 Day</button>
         </div>
 
-        <!-- VERY PROMINENT FIXED BUTTONS AT BOTTOM -->
-        <div class="projection-buttons-container">
-            <button class="projection-button" onclick="sendWA(1)">1D</button>
-            <button class="projection-button" onclick="sendWA(3)">3D</button>
-            <button class="projection-button" onclick="sendWA(5)">5D</button>
+        <!-- Excel-style table -->
+        <div style="overflow-x: auto;">
+            <table class="excel-table">
+                <thead>
+                    <tr>
+                        <th style="width: 60%;">Product</th>
+                        <th style="width: 10%;">On Hand</th>
+                        <th style="width: 10%;">1 Day</th>
+                        <th style="width: 10%;">3 Day</th>
+                        <th style="width: 10%;">5 Day</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {body}
+                </tbody>
+            </table>
         </div>
 
         <!-- WhatsApp functionality -->
@@ -395,7 +376,7 @@ def component_table(rows, vendor: str, branch: str):
     """
 
     # Calculate height based on rows
-    height = 300 + len(rows) * 50
+    height = 200 + len(rows) * 50
     components.html(html, height=height, scrolling=False)
 
 # ------------------------------ UI ------------------------------
@@ -443,11 +424,6 @@ if ss.vendor_data:
     rows = ss.vendor_data[ss.current_vendor]
     component_table(rows, ss.current_vendor, ss.current_branch)
 
-# 4) Status and re-upload option
+# 4) Status (removed the upload button from bottom)
 if ss.vendor_data:
     st.success(f"✅ Loaded vendor: {ss.current_vendor} | Branch: {ss.current_branch}")
-    
-    if st.button("🔄 Upload New Excel File", type="secondary"):
-        ss.vendor_data = {}
-        ss.current_vendor = None
-        st.rerun()
