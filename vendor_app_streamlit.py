@@ -13,6 +13,7 @@ ss.setdefault("vendor_data", {})
 ss.setdefault("current_vendor", None)
 ss.setdefault("current_branch", "Shahbaz")
 ss.setdefault("onhand_values", {})  # Store on-hand values
+ss.setdefault("current_projection", 1)  # Default to 1 day projection
 
 # ------------------------------ CSS + JS ------------------------------
 st.markdown("""
@@ -28,13 +29,14 @@ h1#vendors-demand-title{
 .button-container {
     display: flex;
     justify-content: center;
-    gap: 15px;
+    gap: 10px;
     width: 100%;
     margin: 20px 0;
     padding: 15px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 12px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    flex-wrap: wrap;
 }
 
 /* Excel-style table */
@@ -66,16 +68,16 @@ h1#vendors-demand-title{
     background-color: #e9ecef;
 }
 
-/* Product column */
+/* Product column - wider */
 .product-cell {
-    padding: 8px 12px !important;
+    padding: 8px 16px !important;
     font-weight: 500;
 }
 
 /* On-Hand input - Excel style */
 .onhand-input {
     width: 100% !important;
-    max-width: 120px !important;
+    max-width: 100px !important;
     font-size: 14px !important;
     text-align: center !important;
     border: 2px solid #007bff !important;
@@ -102,25 +104,29 @@ h1#vendors-demand-title{
     appearance: none;
 }
 
-/* Projection columns */
+/* Projection column */
 .projection-cell {
     text-align: center !important;
     font-weight: 600;
     background-color: #e7f3ff !important;
+    font-size: 16px !important;
 }
 
 /* Responsive design */
 @media (max-width: 768px) {
     .button-container {
-        gap: 10px;
-        padding: 12px;
-        flex-wrap: wrap;
+        gap: 8px;
+        padding: 10px;
+    }
+    
+    .excel-table {
+        font-size: 12px;
     }
 }
 </style>
 
 <script>
-// Live calculation function
+// Live calculation function for single projection column
 function liveUpdate(e){
     if(!e || !e.target) return;
     if(!e.target.classList.contains("onhand-input")) return;
@@ -129,24 +135,17 @@ function liveUpdate(e){
     var x = parseInt(e.target.value || "0"); 
     if(isNaN(x)) x = 0;
 
-    var b1 = parseInt(e.target.getAttribute("data-day1") || "0"); 
-    if(isNaN(b1)) b1 = 0;
-    var b3 = parseInt(e.target.getAttribute("data-day3") || "0"); 
-    if(isNaN(b3)) b3 = 0;
-    var b5 = parseInt(e.target.getAttribute("data-day5") || "0"); 
-    if(isNaN(b5)) b5 = 0;
-
-    var p1 = Math.max(0, b1 - x);
-    var p3 = Math.max(0, b3 - x);
-    var p5 = Math.max(0, b5 - x);
-
-    var c1 = document.getElementById("p1-"+idx);
-    var c3 = document.getElementById("p3-"+idx);
-    var c5 = document.getElementById("p5-"+idx);
+    var baseDemand = parseInt(e.target.getAttribute("data-basedemand") || "0"); 
+    if(isNaN(baseDemand)) baseDemand = 0;
     
-    if(c1) c1.textContent = p1;
-    if(c3) c3.textContent = p3;
-    if(c5) c5.textContent = p5;
+    var days = parseInt(e.target.getAttribute("data-days") || "1"); 
+    if(isNaN(days)) days = 1;
+
+    // Calculate projected demand: (baseDemand * days) - onHand
+    var projected = Math.max(0, (baseDemand * days) - x);
+
+    var projectionCell = document.getElementById("projection-"+idx);
+    if(projectionCell) projectionCell.textContent = projected;
 }
 
 // Enhanced Excel-like keyboard navigation
@@ -192,6 +191,64 @@ function handleKeyNavigation(e) {
     }
 }
 
+// Function to change projection days
+function changeProjection(days) {
+    var inputs = document.querySelectorAll('.onhand-input');
+    inputs.forEach(function(input) {
+        input.setAttribute('data-days', days);
+        // Trigger update
+        var event = new Event('input', { bubbles: true });
+        input.dispatchEvent(event);
+    });
+    
+    // Update the projection column header
+    var header = document.querySelector('.excel-table th:nth-child(3)');
+    if(header) {
+        header.textContent = days + ' Day Projection';
+    }
+}
+
+// WhatsApp function
+function sendWA(days) {
+    var trs = document.querySelectorAll(".excel-table tbody tr");
+    var lines = [];
+    
+    lines.push("🏪 *Vendor Demand Invoice*");
+    lines.push("👤 *Vendor:* " + (window.VENDOR || ""));
+    lines.push("🏬 *Branch:* " + (window.BRANCH || ""));
+    lines.push("📊 *Projection:* " + days + " Day");
+    lines.push("📅 *Date:* " + new Date().toLocaleString());
+    lines.push("");
+    lines.push("📦 *ITEMS:*");
+    
+    var totalQty = 0, totalItems = 0;
+    for(var i = 0; i < trs.length; i++){
+        var prod = trs[i].querySelector(".product-cell");
+        var qtyCell = document.getElementById("projection-" + i);
+        if(!prod || !qtyCell) continue;
+        
+        var name = (prod.textContent || "").trim();
+        var qty = parseInt(qtyCell.textContent || "0"); 
+        if(isNaN(qty)) qty = 0;
+        
+        if(qty > 0){
+            totalQty += qty; 
+            totalItems += 1; 
+            lines.push("• " + name + ": " + qty);
+        }
+    }
+    
+    lines.push("");
+    lines.push("📋 *TOTAL ITEMS:* " + totalItems);
+    lines.push("📦 *TOTAL QTY:* " + totalQty);
+    lines.push("");
+    lines.push("Thank you! 🚀");
+    
+    var text = lines.join("\\n");
+    var url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
+    window.open(url, '_blank');
+}
+
 // Initialize event listeners
 function initEventListeners() {
     document.addEventListener("input", liveUpdate, true);
@@ -214,6 +271,7 @@ if (document.readyState === 'loading') {
 def parse_excel(uploaded_file) -> dict:
     """
     Expect each sheet: A=Product, B=1 Day, C=3 Day, D=5 Day (integers).
+    We'll use the 1 Day column as base demand.
     """
     x = pd.ExcelFile(uploaded_file)
     data = {}
@@ -227,24 +285,25 @@ def parse_excel(uploaded_file) -> dict:
             def num(v):
                 try: return int(round(float(v)))
                 except: return 0
-            rows.append([name, num(r.iloc[1]), num(r.iloc[2]), num(r.iloc[3])])
+            # Use 1 Day column as base demand
+            base_demand = num(r.iloc[1])
+            rows.append([name, base_demand])
         if rows:
             data[sheet] = rows
     return data
 
-def export_to_csv(rows, period):
+def calculate_projection(base_demand, days, on_hand):
+    """Calculate projection: (base_demand * days) - on_hand"""
+    on_hand_int = int(on_hand or 0)
+    return max(0, (base_demand * days) - on_hand_int)
+
+def export_to_csv(rows, days):
     """Export data to CSV with Product and Projected Qty columns"""
     export_data = []
     
-    for i, (prod, d1, d3, d5) in enumerate(rows):
-        if period == 1:
-            projected_qty = d1 - int(ss.onhand_values.get(f"{ss.current_vendor}_{i}", 0))
-        elif period == 3:
-            projected_qty = d3 - int(ss.onhand_values.get(f"{ss.current_vendor}_{i}", 0))
-        else:  # period == 5
-            projected_qty = d5 - int(ss.onhand_values.get(f"{ss.current_vendor}_{i}", 0))
-        
-        projected_qty = max(0, projected_qty)
+    for i, (prod, base_demand) in enumerate(rows):
+        on_hand = ss.onhand_values.get(f"{ss.current_vendor}_{i}", 0)
+        projected_qty = calculate_projection(base_demand, days, on_hand)
         export_data.append([prod, projected_qty])
     
     # Create DataFrame
@@ -261,12 +320,15 @@ def clear_all_data():
 
 def component_table(rows, vendor: str, branch: str):
     """
-    Excel-style table with interactive inputs
+    Excel-style table with single projection column
     """
     trs = []
-    for i, (prod, d1, d3, d5) in enumerate(rows):
+    for i, (prod, base_demand) in enumerate(rows):
         # Get current on-hand value from session state
         current_value = ss.onhand_values.get(f"{vendor}_{i}", "")
+        
+        # Calculate current projection
+        current_projection = calculate_projection(base_demand, ss.current_projection, current_value)
         
         trs.append(
             '<tr>'
@@ -274,11 +336,9 @@ def component_table(rows, vendor: str, branch: str):
             f'<td style="text-align: center;">'
             f'<input class="onhand-input" type="number" inputmode="numeric" placeholder="0" '
             f'value="{current_value}" '
-            f'data-idx="{i}" data-day1="{d1}" data-day3="{d3}" data-day5="{d5}">'
+            f'data-idx="{i}" data-basedemand="{base_demand}" data-days="{ss.current_projection}">'
             f'</td>'
-            f'<td class="projection-cell" id="p1-{i}">{d1 - int(current_value or 0)}</td>'
-            f'<td class="projection-cell" id="p3-{i}">{d3 - int(current_value or 0)}</td>'
-            f'<td class="projection-cell" id="p5-{i}">{d5 - int(current_value or 0)}</td>'
+            f'<td class="projection-cell" id="projection-{i}">{current_projection}</td>'
             '</tr>'
         )
     body = "".join(trs)
@@ -292,11 +352,9 @@ def component_table(rows, vendor: str, branch: str):
             <table class="excel-table">
                 <thead>
                     <tr>
-                        <th style="width: 60%;">Product</th>
-                        <th style="width: 10%;">On Hand</th>
-                        <th style="width: 10%;">1 Day</th>
-                        <th style="width: 10%;">3 Day</th>
-                        <th style="width: 10%;">5 Day</th>
+                        <th style="width: 70%;">Product</th>
+                        <th style="width: 15%;">On Hand</th>
+                        <th style="width: 15%;">{ss.current_projection} Day Projection</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -305,75 +363,19 @@ def component_table(rows, vendor: str, branch: str):
             </table>
         </div>
 
-        <!-- WhatsApp functionality -->
         <script>
-        var VENDOR = {vendor_js};
-        var BRANCH = {branch_js};
+        window.VENDOR = {vendor_js};
+        window.BRANCH = {branch_js};
         
-        function nowString(){{
-            var d = new Date();
-            function pad(n){{ return ("0" + n).slice(-2); }}
-            return d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + " " +
-                   pad(d.getHours()) + ":" + pad(d.getMinutes()) + ":" + pad(d.getSeconds());
-        }}
-        
-        function buildInvoice(period){{
-            var pref = (period === 1) ? "p1-" : (period === 3) ? "p3-" : "p5-";
-            var trs = document.querySelectorAll(".excel-table tbody tr");
-            var lines = [];
-            
-            lines.push("🏪 *Vendor Demand Invoice*");
-            lines.push("👤 *Vendor:* " + VENDOR);
-            lines.push("🏬 *Branch:* " + BRANCH);
-            lines.push("📊 *Projection:* " + period + " Day");
-            lines.push("📅 *Date:* " + nowString());
-            lines.push("");
-            lines.push("📦 *ITEMS:*");
-            
-            var totalQty = 0, totalItems = 0;
-            for(var i = 0; i < trs.length; i++){{
-                var prod = trs[i].querySelector(".product-cell");
-                var qtyC = document.getElementById(pref + i);
-                if(!prod || !qtyC) continue;
-                
-                var name = (prod.textContent || "").trim();
-                var qty = parseInt(qtyC.textContent || "0"); 
-                if(isNaN(qty)) qty = 0;
-                
-                if(qty > 0){{
-                    totalQty += qty; 
-                    totalItems += 1; 
-                    lines.push("• " + name + ": " + qty);
-                }}
-            }}
-            
-            lines.push("");
-            lines.push("📋 *TOTAL ITEMS:* " + totalItems);
-            lines.push("📦 *TOTAL QTY:* " + totalQty);
-            lines.push("");
-            lines.push("Thank you! 🚀");
-            
-            return lines.join("\\n");
-        }}
-        
-        function sendWA(period){{
-            var text = buildInvoice(period);
-            var url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
-            window.open(url, '_blank');
-        }}
-        
-        // Initialize event listeners
-        document.addEventListener('DOMContentLoaded', function() {{
-            document.addEventListener("input", liveUpdate, true);
-            document.addEventListener("keyup", liveUpdate, true);
-            document.addEventListener("change", liveUpdate, true);
-            document.addEventListener("keydown", handleKeyNavigation, true);
-        }});
+        // Initialize with current projection
+        setTimeout(function() {{
+            changeProjection({ss.current_projection});
+        }}, 100);
         </script>
     """
 
     # Calculate height based on rows
-    height = 200 + len(rows) * 50
+    height = 150 + len(rows) * 45
     components.html(html, height=height, scrolling=False)
 
 # ------------------------------ UI ------------------------------
@@ -414,70 +416,63 @@ if not ss.vendor_data:
         ss.current_vendor = list(ss.vendor_data.keys())[0]
         st.rerun()
 
-# 3) ACTION BUTTONS
+# 3) ACTION BUTTONS - Demand Calculation
+if ss.vendor_data:
+    st.markdown('<div class="button-container">', unsafe_allow_html=True)
+    
+    # Create 7 columns for buttons
+    cols = st.columns(7)
+    
+    demand_buttons = [
+        ("1 Day", 1),
+        ("2 Day", 2), 
+        ("3 Day", 3),
+        ("4 Day", 4),
+        ("5 Day", 5),
+        ("6 Day", 6),
+        ("7 Day", 7)
+    ]
+    
+    for i, (label, days) in enumerate(demand_buttons):
+        with cols[i]:
+            if st.button(f"📱 {label}", use_container_width=True, type="primary" if days == ss.current_projection else "secondary"):
+                ss.current_projection = days
+                st.rerun()
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# 4) ACTION BUTTONS - Clear and Export
 if ss.vendor_data:
     st.markdown('<div class="button-container">', unsafe_allow_html=True)
     
     col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
     
     with col1:
-        if st.button("📱 1 Day", use_container_width=True, type="primary"):
-            # WhatsApp functionality will be handled by JavaScript
-            pass
-    
-    with col2:
-        if st.button("📱 3 Day", use_container_width=True, type="primary"):
-            # WhatsApp functionality will be handled by JavaScript
-            pass
-    
-    with col3:
-        if st.button("📱 5 Day", use_container_width=True, type="primary"):
-            # WhatsApp functionality will be handled by JavaScript
-            pass
-    
-    with col4:
         if st.button("🗑️ Clear All", use_container_width=True, type="secondary"):
             clear_all_data()
     
-    with col5:
-        csv_1d = export_to_csv(ss.vendor_data[ss.current_vendor], 1)
-        st.download_button(
-            label="📥 Export 1D",
-            data=csv_1d,
-            file_name=f"vendor_demand_1day_{ss.current_vendor}.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
-    
-    with col6:
-        csv_3d = export_to_csv(ss.vendor_data[ss.current_vendor], 3)
-        st.download_button(
-            label="📥 Export 3D",
-            data=csv_3d,
-            file_name=f"vendor_demand_3day_{ss.current_vendor}.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
-    
-    with col7:
-        csv_5d = export_to_csv(ss.vendor_data[ss.current_vendor], 5)
-        st.download_button(
-            label="📥 Export 5D",
-            data=csv_5d,
-            file_name=f"vendor_demand_5day_{ss.current_vendor}.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
+    # Export buttons for different days
+    export_days = [1, 2, 3, 4, 5, 6, 7]
+    for i, days in enumerate(export_days):
+        with [col2, col3, col4, col5, col6, col7][i]:
+            csv_data = export_to_csv(ss.vendor_data[ss.current_vendor], days)
+            st.download_button(
+                label=f"📥 Export {days}D",
+                data=csv_data,
+                file_name=f"vendor_demand_{days}day_{ss.current_vendor}.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
     
     st.markdown('</div>', unsafe_allow_html=True)
 
-# 4) WHEN DATA EXISTS — render Excel-style table
+# 5) WHEN DATA EXISTS — render Excel-style table
 if ss.vendor_data:
     if ss.current_vendor is None or ss.current_vendor not in ss.vendor_data:
         ss.current_vendor = list(ss.vendor_data.keys())[0]
     rows = ss.vendor_data[ss.current_vendor]
     component_table(rows, ss.current_vendor, ss.current_branch)
 
-# 5) Status
+# 6) Status
 if ss.vendor_data:
-    st.success(f"✅ Loaded vendor: {ss.current_vendor} | Branch: {ss.current_branch}")
+    st.success(f"✅ Loaded vendor: {ss.current_vendor} | Branch: {ss.current_branch} | Current Projection: {ss.current_projection} Day(s)")
