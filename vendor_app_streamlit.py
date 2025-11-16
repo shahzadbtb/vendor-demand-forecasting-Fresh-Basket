@@ -19,6 +19,8 @@ if 'component_loaded' not in st.session_state:
     st.session_state.component_loaded = False
 if 'onhand_values' not in st.session_state:
     st.session_state.onhand_values = {}
+if 'projection_days' not in st.session_state:
+    st.session_state.projection_days = 1
 
 # ------------------------------ CSS (GLOBAL) ------------------------------
 st.markdown("""
@@ -43,6 +45,43 @@ h1#vendors-demand-title{
 /* Prevent unnecessary reruns */
 .stApp {
     overflow: visible !important;
+}
+
+/* Button styling */
+.vd-btn {
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+    justify-content: center;
+    margin: 2px 0;
+}
+#wa-btn {
+    background: #25D366;
+    color: #fff;
+}
+#wa-btn:hover {
+    background: #128C7E;
+}
+#csv-btn {
+    background: #007bff;
+    color: #fff;
+}
+#csv-btn:hover {
+    background: #0056b3;
+}
+#clear-btn {
+    background: #6c757d;
+    color: #fff;
+}
+#clear-btn:hover {
+    background: #5a6268;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -79,10 +118,8 @@ def parse_excel(uploaded_file) -> dict:
 
 def component_table(rows, vendor: str, branch: str):
     """
-    Excel-style table + Days dropdown + WhatsApp + CSV export.
-    All logic is inside one HTML component so JS works 100%.
+    Excel-style table only - buttons moved outside
     """
-
     # Build table rows HTML with saved onhand values
     trs = []
     for i, (prod, base_demand) in enumerate(rows):
@@ -93,11 +130,11 @@ def component_table(rows, vendor: str, branch: str):
         if saved_value and saved_value != "":
             try:
                 onhand_val = int(saved_value)
-                current_projection = max(0, base_demand - onhand_val)
+                current_projection = max(0, (base_demand * st.session_state.projection_days) - onhand_val)
             except:
-                current_projection = max(0, base_demand)
+                current_projection = max(0, base_demand * st.session_state.projection_days)
         else:
-            current_projection = max(0, base_demand)
+            current_projection = max(0, base_demand * st.session_state.projection_days)
 
         trs.append(
             '<tr>'
@@ -113,74 +150,13 @@ def component_table(rows, vendor: str, branch: str):
 
     vendor_js = json.dumps(vendor or "")
     branch_js = json.dumps(branch or "")
+    days_js = json.dumps(st.session_state.projection_days)
 
     html = f"""
     <style>
     .vd-container {{
         margin-top: 10px;
         font-family: Arial, sans-serif;
-    }}
-    .vd-button-bar {{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        align-items: center;
-        margin-bottom: 10px;
-    }}
-    .vd-button-bar label {{
-        font-size: 14px;
-        font-weight: 600;
-    }}
-    .vd-button-bar select {{
-        margin-left: 6px;
-        padding: 4px 6px;
-        border-radius: 4px;
-        border: 1px solid #ced4da;
-        font-size: 13px;
-    }}
-    .vd-btn {{
-        border: none;
-        padding: 8px 14px;
-        border-radius: 6px;
-        font-size: 13px;
-        cursor: pointer;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        flex: 1;
-        min-width: 0;
-        justify-content: center;
-    }}
-    .vd-btn-group {{
-        display: flex;
-        gap: 10px;
-        flex: 2;
-        min-width: 0;
-    }}
-    .vd-btn-group .vd-btn {{
-        flex: 1;
-    }}
-    #wa-btn {{
-        background: #25D366;
-        color: #fff;
-    }}
-    #wa-btn:hover {{
-        background: #128C7E;
-    }}
-    #csv-btn {{
-        background: #007bff;
-        color: #fff;
-    }}
-    #csv-btn:hover {{
-        background: #0056b3;
-    }}
-    #clear-btn {{
-        background: #6c757d;
-        color: #fff;
-    }}
-    #clear-btn:hover {{
-        background: #5a6268;
     }}
 
     /* Removed scroll from table wrapper */
@@ -237,7 +213,7 @@ def component_table(rows, vendor: str, branch: str):
 
     /* On-Hand input: ~half inch width */
     .onhand-input {{
-        width: 45px;              /* very narrow (~0.5 inch) */
+        width: 45px;
         max-width: 45px;
         font-size: 13px;
         text-align: center;
@@ -272,29 +248,6 @@ def component_table(rows, vendor: str, branch: str):
     </style>
 
     <div class="vd-container">
-        <div class="vd-button-bar">
-            <div style="flex: 1; display: flex; align-items: center;">
-                <label>Projection Days:
-                    <select id="days-select">
-                        <option value="1" selected>1 Day</option>
-                        <option value="2">2 Days</option>
-                        <option value="3">3 Days</option>
-                        <option value="4">4 Days</option>
-                        <option value="5">5 Days</option>
-                        <option value="6">6 Days</option>
-                        <option value="7">7 Days</option>
-                    </select>
-                </label>
-            </div>
-            <div class="vd-btn-group">
-                <button id="wa-btn" class="vd-btn">📱 Export to WhatsApp</button>
-                <button id="csv-btn" class="vd-btn">📥 Export to Excel (CSV)</button>
-            </div>
-            <div style="flex: 1;">
-                <button id="clear-btn" class="vd-btn">🗑️ Clear On Hand</button>
-            </div>
-        </div>
-
         <div class="table-wrapper">
             <table class="excel-table">
                 <colgroup>
@@ -320,12 +273,10 @@ def component_table(rows, vendor: str, branch: str):
     (function() {{
         const VENDOR = {vendor_js};
         const BRANCH = {branch_js};
+        const CURRENT_DAYS = {days_js};
 
         function getDays() {{
-            const sel = document.getElementById('days-select');
-            if (!sel) return 1;
-            const v = parseInt(sel.value || "1");
-            return isNaN(v) ? 1 : v;
+            return CURRENT_DAYS;
         }}
 
         function recalcRow(input) {{
@@ -361,12 +312,6 @@ def component_table(rows, vendor: str, branch: str):
                 sessionStorage.setItem(`onhand_${{VENDOR}}_${{idx}}`, value);
             }}
         }});
-
-        // Recalculate when days changed
-        const daysSelect = document.getElementById('days-select');
-        if (daysSelect) {{
-            daysSelect.addEventListener('change', recalcAll);
-        }}
 
         // Excel-like keyboard navigation
         document.addEventListener('keydown', function(e) {{
@@ -418,82 +363,21 @@ def component_table(rows, vendor: str, branch: str):
             return rows;
         }}
 
-        // WhatsApp Export
-        const waBtn = document.getElementById('wa-btn');
-        if (waBtn) {{
-            waBtn.addEventListener('click', function() {{
-                const days = getDays();
-                const rows = getExportRows();
-
-                let lines = [];
-                lines.push("🏪 *Vendor Demand Invoice*");
-                lines.push("👤 *Vendor:* " + (VENDOR || ""));
-                lines.push("🏬 *Branch:* " + (BRANCH || ""));
-                lines.push("📊 *Projection:* " + days + " Day" + (days > 1 ? "s" : ""));
-                lines.push("📅 *Date:* " + new Date().toLocaleString());
-                lines.push("");
-                lines.push("📦 *ITEMS:*");
-
-                let totalQty = 0;
-                rows.forEach(r => {{
-                    totalQty += r.qty;
-                    lines.push("• " + r.name + ": " + r.qty);
-                }});
-
-                lines.push("");
-                lines.push("📋 *TOTAL ITEMS:* " + rows.length);
-                lines.push("📦 *TOTAL QTY:* " + totalQty);
-                lines.push("");
-                lines.push("Thank you! 🚀");
-
-                const text = lines.join("\\n");
-                const url = "https://api.whatsapp.com/send?text=" + encodeURIComponent(text);
-                window.open(url, '_blank', 'noopener,noreferrer');
-            }});
-        }}
-
-        // CSV Export (for Excel)
-        const csvBtn = document.getElementById('csv-btn');
-        if (csvBtn) {{
-            csvBtn.addEventListener('click', function() {{
-                const days = getDays();
-                const rows = getExportRows();
-                
-                // Export ALL products even if no items with projected quantity
-                const header = "Product,Projected Qty";
-                const csvLines = [header];
-
-                rows.forEach(r => {{
-                    const safeName = '"' + (r.name || "").replace(/"/g, '""') + '"';
-                    csvLines.push(safeName + "," + r.qty);
-                }});
-
-                const csvContent = csvLines.join("\\r\\n");
-                const blob = new Blob([csvContent], {{ type: 'text/csv;charset=utf-8;' }});
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                const safeVendor = (VENDOR || "vendor").toString().replace(/[^a-z0-9]/gi, '_');
-                a.href = url;
-                a.download = "demand_" + days + "D_" + safeVendor + ".csv";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }});
-        }}
+        // Expose functions to global scope for Streamlit buttons
+        window.getExportRows = getExportRows;
+        window.getVendorInfo = function() {{
+            return {{ vendor: VENDOR, branch: BRANCH, days: getDays() }};
+        }};
 
         // Clear On Hand
-        const clearBtn = document.getElementById('clear-btn');
-        if (clearBtn) {{
-            clearBtn.addEventListener('click', function() {{
-                document.querySelectorAll('.onhand-input').forEach(inp => {{
-                    inp.value = "";
-                    const idx = inp.getAttribute('data-idx');
-                    sessionStorage.setItem(`onhand_${{VENDOR}}_${{idx}}`, "");
-                }});
-                recalcAll();
+        window.clearOnHand = function() {{
+            document.querySelectorAll('.onhand-input').forEach(inp => {{
+                inp.value = "";
+                const idx = inp.getAttribute('data-idx');
+                sessionStorage.setItem(`onhand_${{VENDOR}}_${{idx}}`, "");
             }});
-        }}
+            recalcAll();
+        }};
 
         // Restore values from session storage on load
         document.addEventListener('DOMContentLoaded', function() {{
@@ -513,9 +397,50 @@ def component_table(rows, vendor: str, branch: str):
     </script>
     """
 
-    # Height for component (no scroll inside table, so adjust height accordingly)
-    height = 220 + len(rows) * 30
+    # Height for component
+    height = 120 + len(rows) * 30
     components.html(html, height=height, scrolling=False)
+
+def export_to_whatsapp(rows, vendor, branch, days):
+    """Export data to WhatsApp format"""
+    lines = []
+    lines.append("🏪 *Vendor Demand Invoice*")
+    lines.append("👤 *Vendor:* " + (vendor or ""))
+    lines.append("🏬 *Branch:* " + (branch or ""))
+    lines.append("📊 *Projection:* " + str(days) + " Day" + (days > 1 ? "s" : ""))
+    lines.append("📅 *Date:* " + pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"))
+    lines.append("")
+    lines.append("📦 *ITEMS:*")
+
+    total_qty = 0
+    for row in rows:
+        total_qty += row['qty']
+        lines.append("• " + row['name'] + ": " + str(row['qty']))
+
+    lines.append("")
+    lines.append("📋 *TOTAL ITEMS:* " + str(len(rows)))
+    lines.append("📦 *TOTAL QTY:* " + str(total_qty))
+    lines.append("")
+    lines.append("Thank you! 🚀")
+
+    text = "\n".join(lines)
+    return text
+
+def export_to_csv(rows, vendor, days):
+    """Export data to CSV format"""
+    import csv
+    from io import StringIO
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["Product", "Projected Qty"])
+    
+    for row in rows:
+        writer.writerow([row['name'], row['qty']])
+    
+    csv_content = output.getvalue()
+    output.close()
+    return csv_content
 
 # ------------------------------ MAIN UI ------------------------------
 
@@ -525,6 +450,7 @@ st.markdown('<h1 id="vendors-demand-title">Vendors Demand</h1>', unsafe_allow_ht
 # Create containers for better organization
 header_container = st.container()
 upload_container = st.container()
+controls_container = st.container()
 table_container = st.container()
 status_container = st.container()
 
@@ -543,7 +469,6 @@ with header_container:
             )
             if new_vendor != st.session_state.current_vendor:
                 st.session_state.current_vendor = new_vendor
-                # Don't rerun immediately, let the rest of the script complete
 
         with col2:
             new_branch = st.selectbox(
@@ -556,7 +481,6 @@ with header_container:
             )
             if new_branch != st.session_state.current_branch:
                 st.session_state.current_branch = new_branch
-                # Don't rerun immediately, let the rest of the script complete
 
 with upload_container:
     # 2) UPLOAD (first time)
@@ -567,8 +491,64 @@ with upload_container:
             st.session_state.current_vendor = list(st.session_state.vendor_data.keys())[0]
             st.rerun()
 
+with controls_container:
+    # 3) CONTROLS (Projection Days and Buttons) - ALWAYS VISIBLE
+    if st.session_state.vendor_data:
+        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+        
+        with col1:
+            st.session_state.projection_days = st.selectbox(
+                "📅 Projection Days",
+                [1, 2, 3, 4, 5, 6, 7],
+                index=[1, 2, 3, 4, 5, 6, 7].index(st.session_state.projection_days),
+                key="days_select"
+            )
+        
+        with col2:
+            if st.button("📱 Export to WhatsApp", key="wa_btn", use_container_width=True):
+                # Get current data for export
+                rows = st.session_state.vendor_data[st.session_state.current_vendor]
+                export_data = []
+                for i, (prod, base_demand) in enumerate(rows):
+                    saved_value = st.session_state.onhand_values.get(f"{st.session_state.current_vendor}_{i}", "")
+                    onhand_val = int(saved_value) if saved_value and saved_value != "" else 0
+                    projected = max(0, (base_demand * st.session_state.projection_days) - onhand_val)
+                    export_data.append({'name': prod, 'qty': projected})
+                
+                text = export_to_whatsapp(export_data, st.session_state.current_vendor, st.session_state.current_branch, st.session_state.projection_days)
+                url = "https://api.whatsapp.com/send?text=" + text.replace("\n", "%0A")
+                st.markdown(f'<a href="{url}" target="_blank" style="text-decoration: none;">Open WhatsApp</a>', unsafe_allow_html=True)
+        
+        with col3:
+            if st.button("📥 Export to Excel (CSV)", key="csv_btn", use_container_width=True):
+                # Get current data for export
+                rows = st.session_state.vendor_data[st.session_state.current_vendor]
+                export_data = []
+                for i, (prod, base_demand) in enumerate(rows):
+                    saved_value = st.session_state.onhand_values.get(f"{st.session_state.current_vendor}_{i}", "")
+                    onhand_val = int(saved_value) if saved_value and saved_value != "" else 0
+                    projected = max(0, (base_demand * st.session_state.projection_days) - onhand_val)
+                    export_data.append({'name': prod, 'qty': projected})
+                
+                csv_content = export_to_csv(export_data, st.session_state.current_vendor, st.session_state.projection_days)
+                safe_vendor = str(st.session_state.current_vendor or "vendor").replace('/', '_').replace('\\', '_')
+                st.download_button(
+                    label="Download CSV",
+                    data=csv_content,
+                    file_name=f"demand_{st.session_state.projection_days}D_{safe_vendor}.csv",
+                    mime="text/csv",
+                    key="download_csv"
+                )
+        
+        with col4:
+            if st.button("🗑️ Clear On Hand", key="clear_btn", use_container_width=True):
+                # Clear all onhand values for current vendor
+                for i in range(len(st.session_state.vendor_data[st.session_state.current_vendor])):
+                    st.session_state.onhand_values[f"{st.session_state.current_vendor}_{i}"] = ""
+                st.rerun()
+
 with table_container:
-    # 3) WHEN DATA EXISTS — render Excel-style table + export controls
+    # 4) TABLE ONLY - buttons are now outside
     if st.session_state.vendor_data:
         if st.session_state.current_vendor is None or st.session_state.current_vendor not in st.session_state.vendor_data:
             st.session_state.current_vendor = list(st.session_state.vendor_data.keys())[0]
@@ -578,7 +558,7 @@ with table_container:
 
 with status_container:
     if st.session_state.vendor_data:
-        st.success(f"✅ Vendor: {st.session_state.current_vendor} | Branch: {st.session_state.current_branch}")
+        st.success(f"✅ Vendor: {st.session_state.current_vendor} | Branch: {st.session_state.current_branch} | Days: {st.session_state.projection_days}")
 
 # ------------------------------ FOOTER ------------------------------
 st.markdown(
