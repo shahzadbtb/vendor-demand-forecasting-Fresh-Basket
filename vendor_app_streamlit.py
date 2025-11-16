@@ -8,10 +8,17 @@ from io import BytesIO
 # ------------------------------ CONFIG ------------------------------
 st.set_page_config(page_title="Vendors Demand", page_icon="📦", layout="wide")
 
-ss = st.session_state
-ss.setdefault("vendor_data", {})
-ss.setdefault("current_vendor", None)
-ss.setdefault("current_branch", "Shahbaz")
+# Initialize session state
+if 'vendor_data' not in st.session_state:
+    st.session_state.vendor_data = {}
+if 'current_vendor' not in st.session_state:
+    st.session_state.current_vendor = None
+if 'current_branch' not in st.session_state:
+    st.session_state.current_branch = "Shahbaz"
+if 'component_loaded' not in st.session_state:
+    st.session_state.component_loaded = False
+if 'onhand_values' not in st.session_state:
+    st.session_state.onhand_values = {}
 
 # ------------------------------ CSS (GLOBAL) ------------------------------
 st.markdown("""
@@ -31,6 +38,11 @@ h1#vendors-demand-title{
     margin-top: 2rem;
     padding: 1rem;
     border-top: 1px solid #e0e0e0;
+}
+
+/* Prevent unnecessary reruns */
+.stApp {
+    overflow: visible !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -65,25 +77,34 @@ def parse_excel(uploaded_file) -> dict:
             data[sheet] = rows
     return data
 
-
 def component_table(rows, vendor: str, branch: str):
     """
     Excel-style table + Days dropdown + WhatsApp + CSV export.
     All logic is inside one HTML component so JS works 100%.
     """
 
-    # Build table rows HTML
+    # Build table rows HTML with saved onhand values
     trs = []
     for i, (prod, base_demand) in enumerate(rows):
-        # initial projection: 1-day, on-hand = 0
-        current_projection = max(0, base_demand)
+        # Get saved onhand value from session state
+        saved_value = st.session_state.onhand_values.get(f"{vendor}_{i}", "")
+        
+        # Calculate initial projection based on saved onhand value
+        if saved_value and saved_value != "":
+            try:
+                onhand_val = int(saved_value)
+                current_projection = max(0, base_demand - onhand_val)
+            except:
+                current_projection = max(0, base_demand)
+        else:
+            current_projection = max(0, base_demand)
 
         trs.append(
             '<tr>'
             f'<td class="product-cell col-product">{prod}</td>'
             f'<td style="text-align: center;" class="col-onhand">'
             f'<input class="onhand-input" type="number" inputmode="numeric" placeholder="0" '
-            f'value="" data-idx="{i}" data-basedemand="{base_demand}">'
+            f'value="{saved_value}" data-idx="{i}" data-basedemand="{base_demand}" data-product="{prod}">'
             f'</td>'
             f'<td class="projection-cell col-projection" id="projection-{i}" style="text-align: center;">{current_projection}</td>'
             '</tr>'
@@ -331,6 +352,13 @@ def component_table(rows, vendor: str, branch: str):
         document.addEventListener('input', function(e) {{
             if (e.target && e.target.classList.contains('onhand-input')) {{
                 recalcRow(e.target);
+                // Save the value to prevent loss during rerun
+                const idx = e.target.getAttribute('data-idx');
+                const value = e.target.value;
+                const product = e.target.getAttribute('data-product');
+                
+                // Store in session storage as backup
+                sessionStorage.setItem(`onhand_${{VENDOR}}_${{idx}}`, value);
             }}
         }});
 
@@ -460,10 +488,24 @@ def component_table(rows, vendor: str, branch: str):
             clearBtn.addEventListener('click', function() {{
                 document.querySelectorAll('.onhand-input').forEach(inp => {{
                     inp.value = "";
+                    const idx = inp.getAttribute('data-idx');
+                    sessionStorage.setItem(`onhand_${{VENDOR}}_${{idx}}`, "");
                 }});
                 recalcAll();
             }});
         }}
+
+        // Restore values from session storage on load
+        document.addEventListener('DOMContentLoaded', function() {{
+            document.querySelectorAll('.onhand-input').forEach(inp => {{
+                const idx = inp.getAttribute('data-idx');
+                const saved = sessionStorage.getItem(`onhand_${{VENDOR}}_${{idx}}`);
+                if (saved !== null) {{
+                    inp.value = saved;
+                }}
+                recalcRow(inp);
+            }});
+        }});
 
         // Initial recalculation
         recalcAll();
@@ -475,55 +517,68 @@ def component_table(rows, vendor: str, branch: str):
     height = 220 + len(rows) * 30
     components.html(html, height=height, scrolling=False)
 
+# ------------------------------ MAIN UI ------------------------------
 
-# ------------------------------ UI ------------------------------
+# Always show the title
 st.markdown('<h1 id="vendors-demand-title">Vendors Demand</h1>', unsafe_allow_html=True)
 
-# 1) VENDOR & BRANCH SELECTION (top)
-if ss.vendor_data:
-    vendors = list(ss.vendor_data.keys())
-    col1, col2 = st.columns(2)
+# Create containers for better organization
+header_container = st.container()
+upload_container = st.container()
+table_container = st.container()
+status_container = st.container()
 
-    with col1:
-        new_vendor = st.selectbox(
-            "🔍 Select Vendor",
-            vendors,
-            index=vendors.index(ss.current_vendor) if ss.current_vendor in vendors else 0,
-            key="vendor_select_top"
-        )
-        if new_vendor != ss.current_vendor:
-            ss.current_vendor = new_vendor
+with header_container:
+    # 1) VENDOR & BRANCH SELECTION (top)
+    if st.session_state.vendor_data:
+        vendors = list(st.session_state.vendor_data.keys())
+        col1, col2 = st.columns(2)
+
+        with col1:
+            new_vendor = st.selectbox(
+                "🔍 Select Vendor",
+                vendors,
+                index=vendors.index(st.session_state.current_vendor) if st.session_state.current_vendor in vendors else 0,
+                key="vendor_select_top"
+            )
+            if new_vendor != st.session_state.current_vendor:
+                st.session_state.current_vendor = new_vendor
+                # Don't rerun immediately, let the rest of the script complete
+
+        with col2:
+            new_branch = st.selectbox(
+                "🏬 Select Branch",
+                ["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"],
+                index=["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"].index(
+                    st.session_state.current_branch
+                ),
+                key="branch_select_top"
+            )
+            if new_branch != st.session_state.current_branch:
+                st.session_state.current_branch = new_branch
+                # Don't rerun immediately, let the rest of the script complete
+
+with upload_container:
+    # 2) UPLOAD (first time)
+    if not st.session_state.vendor_data:
+        uploaded = st.file_uploader("📤 Upload Excel File", type=["xlsx", "xls"])
+        if uploaded:
+            st.session_state.vendor_data = parse_excel(uploaded)
+            st.session_state.current_vendor = list(st.session_state.vendor_data.keys())[0]
             st.rerun()
 
-    with col2:
-        new_branch = st.selectbox(
-            "🏬 Select Branch",
-            ["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"],
-            index=["Shahbaz", "Clifton", "Badar", "DHA Ecom", "BHD Ecom", "BHD", "Head Office"].index(
-                ss.current_branch
-            ),
-            key="branch_select_top"
-        )
-        if new_branch != ss.current_branch:
-            ss.current_branch = new_branch
-            st.rerun()
+with table_container:
+    # 3) WHEN DATA EXISTS — render Excel-style table + export controls
+    if st.session_state.vendor_data:
+        if st.session_state.current_vendor is None or st.session_state.current_vendor not in st.session_state.vendor_data:
+            st.session_state.current_vendor = list(st.session_state.vendor_data.keys())[0]
+        
+        rows = st.session_state.vendor_data[st.session_state.current_vendor]
+        component_table(rows, st.session_state.current_vendor, st.session_state.current_branch)
 
-# 2) UPLOAD (first time)
-if not ss.vendor_data:
-    uploaded = st.file_uploader("📤 Upload Excel File", type=["xlsx", "xls"])
-    if uploaded:
-        ss.vendor_data = parse_excel(uploaded)
-        ss.current_vendor = list(ss.vendor_data.keys())[0]
-        st.rerun()
-
-# 3) WHEN DATA EXISTS — render Excel-style table + export controls
-if ss.vendor_data:
-    if ss.current_vendor is None or ss.current_vendor not in ss.vendor_data:
-        ss.current_vendor = list(ss.vendor_data.keys())[0]
-    rows = ss.vendor_data[ss.current_vendor]
-    component_table(rows, ss.current_vendor, ss.current_branch)
-
-    st.success(f"✅ Vendor: {ss.current_vendor} | Branch: {ss.current_branch}")
+with status_container:
+    if st.session_state.vendor_data:
+        st.success(f"✅ Vendor: {st.session_state.current_vendor} | Branch: {st.session_state.current_branch}")
 
 # ------------------------------ FOOTER ------------------------------
 st.markdown(
