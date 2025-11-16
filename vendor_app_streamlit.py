@@ -22,6 +22,16 @@ st.markdown("""
 h1#vendors-demand-title{
   text-align:center; margin:4px 0 6px 0; font-size:1.36rem; font-weight:800;
 }
+
+/* Footer styling */
+.footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 2rem;
+    padding: 1rem;
+    border-top: 1px solid #e0e0e0;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -75,7 +85,7 @@ def component_table(rows, vendor: str, branch: str):
             f'<input class="onhand-input" type="number" inputmode="numeric" placeholder="0" '
             f'value="" data-idx="{i}" data-basedemand="{base_demand}">'
             f'</td>'
-            f'<td class="projection-cell col-projection" id="projection-{i}">{current_projection}</td>'
+            f'<td class="projection-cell col-projection" id="projection-{i}" style="text-align: center;">{current_projection}</td>'
             '</tr>'
         )
     body = "".join(trs)
@@ -117,6 +127,18 @@ def component_table(rows, vendor: str, branch: str):
         display: inline-flex;
         align-items: center;
         gap: 4px;
+        flex: 1;
+        min-width: 0;
+        justify-content: center;
+    }}
+    .vd-btn-group {{
+        display: flex;
+        gap: 10px;
+        flex: 2;
+        min-width: 0;
+    }}
+    .vd-btn-group .vd-btn {{
+        flex: 1;
     }}
     #wa-btn {{
         background: #25D366;
@@ -231,7 +253,7 @@ def component_table(rows, vendor: str, branch: str):
 
     <div class="vd-container">
         <div class="vd-button-bar">
-            <div>
+            <div style="flex: 1; display: flex; align-items: center;">
                 <label>Projection Days:
                     <select id="days-select">
                         <option value="1" selected>1 Day</option>
@@ -244,9 +266,13 @@ def component_table(rows, vendor: str, branch: str):
                     </select>
                 </label>
             </div>
-            <button id="wa-btn" class="vd-btn">📱 Export to WhatsApp</button>
-            <button id="csv-btn" class="vd-btn">📥 Export to Excel (CSV)</button>
-            <button id="clear-btn" class="vd-btn">🗑️ Clear On Hand</button>
+            <div class="vd-btn-group">
+                <button id="wa-btn" class="vd-btn">📱 Export to WhatsApp</button>
+                <button id="csv-btn" class="vd-btn">📥 Export to Excel (CSV)</button>
+            </div>
+            <div style="flex: 1;">
+                <button id="clear-btn" class="vd-btn">🗑️ Clear On Hand</button>
+            </div>
         </div>
 
         <div class="table-wrapper">
@@ -503,3 +529,13 @@ if ss.vendor_data:
     component_table(rows, ss.current_vendor, ss.current_branch)
 
     st.success(f"✅ Vendor: {ss.current_vendor} | Branch: {ss.current_branch}")
+
+# ------------------------------ FOOTER ------------------------------
+st.markdown(
+    """
+    <div class="footer">
+        Software Developed by M Shahzad | Contact: 0345-2227512
+    </div>
+    """,
+    unsafe_allow_html=True
+)
