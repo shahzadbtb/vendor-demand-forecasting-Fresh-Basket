@@ -162,9 +162,8 @@ def component_table(rows, vendor: str, branch: str):
         background: #5a6268;
     }}
 
+    /* Removed scroll from table wrapper */
     .table-wrapper {{
-        max-height: 600px;
-        overflow-y: auto;
         border: 1px solid #dee2e6;
         border-radius: 8px;
     }}
@@ -385,9 +384,8 @@ def component_table(rows, vendor: str, branch: str):
                 // FINAL QTY = (baseDemand * days) - onHand
                 const projected = Math.max(0, (baseDemand * days) - onHand);
 
-                if (projected > 0) {{
-                    rows.push({{ name: name, qty: projected }});
-                }}
+                // Include ALL products even if projected quantity is 0
+                rows.push({{ name: name, qty: projected }});
             }});
             return rows;
         }}
@@ -432,11 +430,8 @@ def component_table(rows, vendor: str, branch: str):
             csvBtn.addEventListener('click', function() {{
                 const days = getDays();
                 const rows = getExportRows();
-                if (rows.length === 0) {{
-                    alert("No items with projected quantity to export.");
-                    return;
-                }}
-
+                
+                // Export ALL products even if no items with projected quantity
                 const header = "Product,Projected Qty";
                 const csvLines = [header];
 
@@ -476,8 +471,8 @@ def component_table(rows, vendor: str, branch: str):
     </script>
     """
 
-    # Height for component (scroll inside)
-    height = min(700, 220 + len(rows) * 30)
+    # Height for component (no scroll inside table, so adjust height accordingly)
+    height = 220 + len(rows) * 30
     components.html(html, height=height, scrolling=False)
 
 
