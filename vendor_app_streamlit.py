@@ -407,7 +407,7 @@ def export_to_whatsapp(rows, vendor, branch, days):
     lines.append("🏪 *Vendor Demand Invoice*")
     lines.append("👤 *Vendor:* " + (vendor or ""))
     lines.append("🏬 *Branch:* " + (branch or ""))
-    lines.append("📊 *Projection:* " + str(days) + " Day" + (days > 1 ? "s" : ""))
+    lines.append("📊 *Projection:* " + str(days) + " Day" + ("s" if days > 1 else ""))
     lines.append("📅 *Date:* " + pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"))
     lines.append("")
     lines.append("📦 *ITEMS:*")
