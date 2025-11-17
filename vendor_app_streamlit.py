@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from io import BytesIO
+import urllib.parse
 
 # ------------------------------ CONFIG ------------------------------
 st.set_page_config(page_title="Vendors Demand", page_icon="📦", layout="wide")
@@ -47,8 +48,19 @@ h1#vendors-demand-title{
     overflow: visible !important;
 }
 
+/* Sticky header for controls */
+.sticky-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 999;
+    padding: 1rem 0;
+    margin: -1rem 0 1rem 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
 /* Button styling */
-.vd-btn {
+.custom-button {
     border: none;
     padding: 8px 14px;
     border-radius: 6px;
@@ -61,27 +73,35 @@ h1#vendors-demand-title{
     width: 100%;
     justify-content: center;
     margin: 2px 0;
+    text-decoration: none;
+    color: white !important;
 }
-#wa-btn {
+.wa-button {
     background: #25D366;
     color: #fff;
 }
-#wa-btn:hover {
+.wa-button:hover {
     background: #128C7E;
+    color: white !important;
 }
-#csv-btn {
+.csv-button {
     background: #007bff;
     color: #fff;
 }
-#csv-btn:hover {
+.csv-button:hover {
     background: #0056b3;
 }
-#clear-btn {
+.clear-button {
     background: #6c757d;
     color: #fff;
 }
-#clear-btn:hover {
+.clear-button:hover {
     background: #5a6268;
+}
+
+/* Remove default Streamlit button styling */
+.stDownloadButton > button {
+    width: 100% !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -123,7 +143,7 @@ def component_table(rows, vendor: str, branch: str):
     # Build table rows HTML with saved onhand values
     trs = []
     for i, (prod, base_demand) in enumerate(rows):
-        # Get saved onhand value from session state
+        # Get saved onhand value from session state - default to empty
         saved_value = st.session_state.onhand_values.get(f"{vendor}_{i}", "")
         
         # Calculate initial projection based on saved onhand value
@@ -363,20 +383,14 @@ def component_table(rows, vendor: str, branch: str):
             return rows;
         }}
 
-        // Expose functions to global scope for Streamlit buttons
-        window.getExportRows = getExportRows;
-        window.getVendorInfo = function() {{
-            return {{ vendor: VENDOR, branch: BRANCH, days: getDays() }};
-        }};
-
-        // Clear On Hand
+        // Clear On Hand function
         window.clearOnHand = function() {{
             document.querySelectorAll('.onhand-input').forEach(inp => {{
                 inp.value = "";
                 const idx = inp.getAttribute('data-idx');
                 sessionStorage.setItem(`onhand_${{VENDOR}}_${{idx}}`, "");
+                recalcRow(inp);
             }});
-            recalcAll();
         }};
 
         // Restore values from session storage on load
@@ -442,6 +456,22 @@ def export_to_csv(rows, vendor, days):
     output.close()
     return csv_content
 
+def get_whatsapp_url(text):
+    """Create WhatsApp URL with encoded text"""
+    encoded_text = urllib.parse.quote(text)
+    return f"https://api.whatsapp.com/send?text={encoded_text}"
+
+def get_export_data(vendor, projection_days):
+    """Get export data for current vendor"""
+    rows = st.session_state.vendor_data[vendor]
+    export_data = []
+    for i, (prod, base_demand) in enumerate(rows):
+        saved_value = st.session_state.onhand_values.get(f"{vendor}_{i}", "")
+        onhand_val = int(saved_value) if saved_value and saved_value != "" else 0
+        projected = max(0, (base_demand * projection_days) - onhand_val)
+        export_data.append({'name': prod, 'qty': projected})
+    return export_data
+
 # ------------------------------ MAIN UI ------------------------------
 
 # Always show the title
@@ -489,12 +519,16 @@ with upload_container:
         if uploaded:
             st.session_state.vendor_data = parse_excel(uploaded)
             st.session_state.current_vendor = list(st.session_state.vendor_data.keys())[0]
+            # Clear any existing onhand values when new file is uploaded
+            st.session_state.onhand_values = {}
             st.rerun()
 
+# Sticky controls section
+st.markdown('<div class="sticky-header">', unsafe_allow_html=True)
 with controls_container:
     # 3) CONTROLS (Projection Days and Buttons) - ALWAYS VISIBLE
     if st.session_state.vendor_data:
-        col1, col2, col3, col4 = st.columns([1, 1, 1, 1])
+        col1, col2, col3, col4, col5 = st.columns([1.2, 1, 1, 1, 1])
         
         with col1:
             st.session_state.projection_days = st.selectbox(
@@ -505,47 +539,49 @@ with controls_container:
             )
         
         with col2:
-            if st.button("📱 Export to WhatsApp", key="wa_btn", use_container_width=True):
-                # Get current data for export
-                rows = st.session_state.vendor_data[st.session_state.current_vendor]
-                export_data = []
-                for i, (prod, base_demand) in enumerate(rows):
-                    saved_value = st.session_state.onhand_values.get(f"{st.session_state.current_vendor}_{i}", "")
-                    onhand_val = int(saved_value) if saved_value and saved_value != "" else 0
-                    projected = max(0, (base_demand * st.session_state.projection_days) - onhand_val)
-                    export_data.append({'name': prod, 'qty': projected})
-                
+            # WhatsApp Export Button
+            if st.session_state.vendor_data:
+                export_data = get_export_data(st.session_state.current_vendor, st.session_state.projection_days)
                 text = export_to_whatsapp(export_data, st.session_state.current_vendor, st.session_state.current_branch, st.session_state.projection_days)
-                url = "https://api.whatsapp.com/send?text=" + text.replace("\n", "%0A")
-                st.markdown(f'<a href="{url}" target="_blank" style="text-decoration: none;">Open WhatsApp</a>', unsafe_allow_html=True)
+                whatsapp_url = get_whatsapp_url(text)
+                
+                st.markdown(
+                    f'<a href="{whatsapp_url}" target="_blank" class="custom-button wa-button">📱 Export to WhatsApp</a>',
+                    unsafe_allow_html=True
+                )
         
         with col3:
-            if st.button("📥 Export to Excel (CSV)", key="csv_btn", use_container_width=True):
-                # Get current data for export
-                rows = st.session_state.vendor_data[st.session_state.current_vendor]
-                export_data = []
-                for i, (prod, base_demand) in enumerate(rows):
-                    saved_value = st.session_state.onhand_values.get(f"{st.session_state.current_vendor}_{i}", "")
-                    onhand_val = int(saved_value) if saved_value and saved_value != "" else 0
-                    projected = max(0, (base_demand * st.session_state.projection_days) - onhand_val)
-                    export_data.append({'name': prod, 'qty': projected})
-                
+            # CSV Export Button
+            if st.session_state.vendor_data:
+                export_data = get_export_data(st.session_state.current_vendor, st.session_state.projection_days)
                 csv_content = export_to_csv(export_data, st.session_state.current_vendor, st.session_state.projection_days)
                 safe_vendor = str(st.session_state.current_vendor or "vendor").replace('/', '_').replace('\\', '_')
+                
                 st.download_button(
-                    label="Download CSV",
+                    label="📥 Export to Excel (CSV)",
                     data=csv_content,
                     file_name=f"demand_{st.session_state.projection_days}D_{safe_vendor}.csv",
                     mime="text/csv",
-                    key="download_csv"
+                    key="download_csv",
+                    use_container_width=True
                 )
         
         with col4:
-            if st.button("🗑️ Clear On Hand", key="clear_btn", use_container_width=True):
+            # Clear On Hand Button
+            if st.button("🗑️ Clear On Hand", key="clear_btn", use_container_width=True, type="secondary"):
                 # Clear all onhand values for current vendor
-                for i in range(len(st.session_state.vendor_data[st.session_state.current_vendor])):
-                    st.session_state.onhand_values[f"{st.session_state.current_vendor}_{i}"] = ""
+                vendor_key = st.session_state.current_vendor
+                for i in range(len(st.session_state.vendor_data[vendor_key])):
+                    st.session_state.onhand_values[f"{vendor_key}_{i}"] = ""
+                # Force rerun to update the table
                 st.rerun()
+        
+        with col5:
+            # Refresh button to ensure updates
+            if st.button("🔄 Refresh", key="refresh_btn", use_container_width=True):
+                st.rerun()
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 with table_container:
     # 4) TABLE ONLY - buttons are now outside
