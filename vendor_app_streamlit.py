@@ -425,11 +425,10 @@ def component_table(rows, vendor: str, branch: str):
                 let totalItems = 0;
                 
                 rows.forEach(r => {{
-                    if (r.qty > 0) {{
-                        totalQty += r.qty;
-                        totalItems++;
-                        lines.push("• " + r.name + ": " + r.qty);
-                    }}
+                    // Include ALL products even if quantity is 0
+                    totalQty += r.qty;
+                    totalItems++;
+                    lines.push("• " + r.name + ": " + r.qty);
                 }});
 
                 lines.push("");
@@ -451,15 +450,14 @@ def component_table(rows, vendor: str, branch: str):
                 const days = getDays();
                 const rows = getExportRows();
                 
-                // Export only products with quantity > 0
+                // Export ALL products even with 0 quantity
                 const header = "Product,Projected Qty";
                 const csvLines = [header];
 
                 rows.forEach(r => {{
-                    if (r.qty > 0) {{
-                        const safeName = '"' + (r.name || "").replace(/"/g, '""') + '"';
-                        csvLines.push(safeName + "," + r.qty);
-                    }}
+                    // Include ALL products even if quantity is 0
+                    const safeName = '"' + (r.name || "").replace(/"/g, '""') + '"';
+                    csvLines.push(safeName + "," + r.qty);
                 }});
 
                 const csvContent = csvLines.join("\\r\\n");
