@@ -366,16 +366,18 @@ def component_table(rows, vendor: str, branch: str):
             trs.forEach(tr => {{
                 const prodCell = tr.querySelector('.product-cell');
                 const input = tr.querySelector('.onhand-input');
+                const projectionCell = tr.querySelector('.projection-cell');
+                
                 if (!prodCell || !input) return;
 
                 const name = (prodCell.textContent || '').trim();
-                let baseDemand = parseInt(input.getAttribute('data-basedemand') || "0");
-                if (isNaN(baseDemand)) baseDemand = 0;
-                let onHand = parseInt(input.value || "0");
-                if (isNaN(onHand)) onHand = 0;
-
-                // FINAL QTY = (baseDemand * days) - onHand
-                const projected = Math.max(0, (baseDemand * days) - onHand);
+                
+                // Use the ACTUAL PROJECTION VALUE from the projection cell, not recalculating
+                let projected = 0;
+                if (projectionCell) {{
+                    projected = parseInt(projectionCell.textContent || "0");
+                    if (isNaN(projected)) projected = 0;
+                }}
 
                 // Include ALL products even if projected quantity is 0
                 rows.push({{ name: name, qty: projected }});
@@ -383,7 +385,7 @@ def component_table(rows, vendor: str, branch: str):
             return rows;
         }}
 
-        // Clear On Hand function
+        // Clear On Hand function - clears both display and session storage
         window.clearOnHand = function() {{
             document.querySelectorAll('.onhand-input').forEach(inp => {{
                 inp.value = "";
@@ -392,6 +394,9 @@ def component_table(rows, vendor: str, branch: str):
                 recalcRow(inp);
             }});
         }};
+
+        // Expose getExportRows to window for external access
+        window.getExportRows = getExportRows;
 
         // Restore values from session storage on load
         document.addEventListener('DOMContentLoaded', function() {{
@@ -429,10 +434,11 @@ def export_to_whatsapp(rows, vendor, branch, days):
     total_qty = 0
     for row in rows:
         total_qty += row['qty']
-        lines.append("• " + row['name'] + ": " + str(row['qty']))
+        if row['qty'] > 0:  # Only include items with quantity > 0
+            lines.append("• " + row['name'] + ": " + str(row['qty']))
 
     lines.append("")
-    lines.append("📋 *TOTAL ITEMS:* " + str(len(rows)))
+    lines.append("📋 *TOTAL ITEMS:* " + str(len([r for r in rows if r['qty'] > 0])))
     lines.append("📦 *TOTAL QTY:* " + str(total_qty))
     lines.append("")
     lines.append("Thank you! 🚀")
@@ -450,7 +456,8 @@ def export_to_csv(rows, vendor, days):
     writer.writerow(["Product", "Projected Qty"])
     
     for row in rows:
-        writer.writerow([row['name'], row['qty']])
+        if row['qty'] > 0:  # Only include items with quantity > 0
+            writer.writerow([row['name'], row['qty']])
     
     csv_content = output.getvalue()
     output.close()
@@ -461,13 +468,32 @@ def get_whatsapp_url(text):
     encoded_text = urllib.parse.quote(text)
     return f"https://api.whatsapp.com/send?text={encoded_text}"
 
+def get_export_data_from_table():
+    """Get export data directly from the table using JavaScript"""
+    js_code = """
+    <script>
+    if (typeof getExportRows === 'function') {
+        const rows = getExportRows();
+        // Send data back to Streamlit
+        window.parent.postMessage({
+            type: 'EXPORT_DATA',
+            data: rows
+        }, '*');
+    }
+    </script>
+    """
+    
+    # We'll use a different approach - get data from session state
+    return None
+
 def get_export_data(vendor, projection_days):
-    """Get export data for current vendor"""
+    """Get export data for current vendor - FIXED VERSION"""
     rows = st.session_state.vendor_data[vendor]
     export_data = []
     for i, (prod, base_demand) in enumerate(rows):
         saved_value = st.session_state.onhand_values.get(f"{vendor}_{i}", "")
         onhand_val = int(saved_value) if saved_value and saved_value != "" else 0
+        # CORRECT CALCULATION: (base_demand * days) - onhand_val
         projected = max(0, (base_demand * projection_days) - onhand_val)
         export_data.append({'name': prod, 'qty': projected})
     return export_data
@@ -528,7 +554,7 @@ st.markdown('<div class="sticky-header">', unsafe_allow_html=True)
 with controls_container:
     # 3) CONTROLS (Projection Days and Buttons) - ALWAYS VISIBLE
     if st.session_state.vendor_data:
-        col1, col2, col3, col4, col5 = st.columns([1.2, 1, 1, 1, 1])
+        col1, col2, col3, col4 = st.columns([1.2, 1, 1, 1])
         
         with col1:
             st.session_state.projection_days = st.selectbox(
@@ -541,6 +567,7 @@ with controls_container:
         with col2:
             # WhatsApp Export Button
             if st.session_state.vendor_data:
+                # Use the CORRECT calculation for export data
                 export_data = get_export_data(st.session_state.current_vendor, st.session_state.projection_days)
                 text = export_to_whatsapp(export_data, st.session_state.current_vendor, st.session_state.current_branch, st.session_state.projection_days)
                 whatsapp_url = get_whatsapp_url(text)
@@ -553,6 +580,7 @@ with controls_container:
         with col3:
             # CSV Export Button
             if st.session_state.vendor_data:
+                # Use the CORRECT calculation for export data
                 export_data = get_export_data(st.session_state.current_vendor, st.session_state.projection_days)
                 csv_content = export_to_csv(export_data, st.session_state.current_vendor, st.session_state.projection_days)
                 safe_vendor = str(st.session_state.current_vendor or "vendor").replace('/', '_').replace('\\', '_')
@@ -567,18 +595,40 @@ with controls_container:
                 )
         
         with col4:
-            # Clear On Hand Button
+            # Clear On Hand Button - This will clear the values immediately
             if st.button("🗑️ Clear On Hand", key="clear_btn", use_container_width=True, type="secondary"):
-                # Clear all onhand values for current vendor
+                # Clear all onhand values for current vendor from session state
                 vendor_key = st.session_state.current_vendor
                 for i in range(len(st.session_state.vendor_data[vendor_key])):
                     st.session_state.onhand_values[f"{vendor_key}_{i}"] = ""
-                # Force rerun to update the table
-                st.rerun()
-        
-        with col5:
-            # Refresh button to ensure updates
-            if st.button("🔄 Refresh", key="refresh_btn", use_container_width=True):
+                
+                # Also clear from session storage using JavaScript
+                js_code = f"""
+                <script>
+                if (typeof clearOnHand === 'function') {{
+                    clearOnHand();
+                }}
+                // Also clear session storage
+                const vendor = "{vendor_key}";
+                const inputs = document.querySelectorAll('.onhand-input');
+                inputs.forEach(inp => {{
+                    const idx = inp.getAttribute('data-idx');
+                    sessionStorage.setItem(`onhand_${{vendor}}_${{idx}}`, "");
+                    inp.value = "";
+                    // Trigger recalculation
+                    const baseDemand = parseInt(inp.getAttribute('data-basedemand') || "0");
+                    const days = {st.session_state.projection_days};
+                    const projected = Math.max(0, (baseDemand * days));
+                    const cell = document.getElementById('projection-' + idx);
+                    if (cell) cell.textContent = projected;
+                }});
+                </script>
+                """
+                components.html(js_code, height=0)
+                
+                # Show success message
+                st.success("On Hand values cleared successfully!")
+                # Rerun to refresh the display
                 st.rerun()
 
 st.markdown('</div>', unsafe_allow_html=True)
