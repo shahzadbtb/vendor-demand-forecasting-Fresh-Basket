@@ -372,17 +372,14 @@ def component_table(rows, vendor: str, branch: str):
             const trs = document.querySelectorAll('.excel-table tbody tr');
             trs.forEach(tr => {{
                 const prodCell = tr.querySelector('.product-cell');
-                const input = tr.querySelector('.onhand-input');
-                if (!prodCell || !input) return;
+                const projectionCell = tr.querySelector('.projection-cell');
+                if (!prodCell || !projectionCell) return;
 
                 const name = (prodCell.textContent || '').trim();
-                let baseDemand = parseInt(input.getAttribute('data-basedemand') || "0");
-                if (isNaN(baseDemand)) baseDemand = 0;
-                let onHand = parseInt(input.value || "0");
-                if (isNaN(onHand)) onHand = 0;
-
-                // FINAL QTY = (baseDemand * days) - onHand
-                const projected = Math.max(0, (baseDemand * days) - onHand);
+                
+                // FIX: Use the ACTUAL PROJECTION VALUE from the table cell, not recalculating
+                let projected = parseInt(projectionCell.textContent || "0");
+                if (isNaN(projected)) projected = 0;
 
                 // Include ALL products even if projected quantity is 0
                 rows.push({{ name: name, qty: projected }});
@@ -407,13 +404,18 @@ def component_table(rows, vendor: str, branch: str):
                 lines.push("📦 *ITEMS:*");
 
                 let totalQty = 0;
+                let totalItems = 0;
+                
                 rows.forEach(r => {{
-                    totalQty += r.qty;
-                    lines.push("• " + r.name + ": " + r.qty);
+                    if (r.qty > 0) {{
+                        totalQty += r.qty;
+                        totalItems++;
+                        lines.push("• " + r.name + ": " + r.qty);
+                    }}
                 }});
 
                 lines.push("");
-                lines.push("📋 *TOTAL ITEMS:* " + rows.length);
+                lines.push("📋 *TOTAL ITEMS:* " + totalItems);
                 lines.push("📦 *TOTAL QTY:* " + totalQty);
                 lines.push("");
                 lines.push("Thank you! 🚀");
@@ -431,13 +433,15 @@ def component_table(rows, vendor: str, branch: str):
                 const days = getDays();
                 const rows = getExportRows();
                 
-                // Export ALL products even if no items with projected quantity
+                // Export only products with quantity > 0
                 const header = "Product,Projected Qty";
                 const csvLines = [header];
 
                 rows.forEach(r => {{
-                    const safeName = '"' + (r.name || "").replace(/"/g, '""') + '"';
-                    csvLines.push(safeName + "," + r.qty);
+                    if (r.qty > 0) {{
+                        const safeName = '"' + (r.name || "").replace(/"/g, '""') + '"';
+                        csvLines.push(safeName + "," + r.qty);
+                    }}
                 }});
 
                 const csvContent = csvLines.join("\\r\\n");
