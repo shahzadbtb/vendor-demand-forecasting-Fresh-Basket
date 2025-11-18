@@ -32,6 +32,17 @@ h1#vendors-demand-title{
     padding: 1rem;
     border-top: 1px solid #e0e0e0;
 }
+
+/* Make button bar sticky */
+.vd-button-bar {
+    position: sticky !important;
+    top: 0px !important;
+    background: white !important;
+    z-index: 1000 !important;
+    padding: 10px 0 !important;
+    margin-bottom: 10px !important;
+    border-bottom: 1px solid #dee2e6 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -105,6 +116,12 @@ def component_table(rows, vendor: str, branch: str):
         gap: 10px;
         align-items: center;
         margin-bottom: 10px;
+        position: sticky;
+        top: 0;
+        background: white;
+        z-index: 1000;
+        padding: 10px 0;
+        border-bottom: 1px solid #dee2e6;
     }}
     .vd-button-bar label {{
         font-size: 14px;
@@ -166,6 +183,7 @@ def component_table(rows, vendor: str, branch: str):
     .table-wrapper {{
         border: 1px solid #dee2e6;
         border-radius: 8px;
+        margin-top: 10px;
     }}
 
     /* Excel-style table */
